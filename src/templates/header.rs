@@ -1,12 +1,14 @@
-use maud::{html, Markup};
+{
+  let data = db.query_row("select `value` from `main` where `key` = 1", params![], |row| {
+    row.get::<_, String>(0)
+  }).unwrap_or("".to_string()); // "Graffiti database"
 
-pub fn tpl() -> Markup {
   html! {
     .header {
       .container {
-        .logo { "Graffiti database" }
+        .logo { (data) }
         .nav-menu {
-          a href="#" { "Home" }
+          a href={ (root_url) "views/home" } { "Home" }
           a href="#" { "Graffiti" }
           a href="#" { "Authors" }
           a href="#" { "Tags" }
