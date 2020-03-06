@@ -1,4 +1,5 @@
 #![feature(proc_macro_hygiene)]
+#[macro_use] extern crate lazy_static;
 mod templates;
 mod config;
 
@@ -14,6 +15,7 @@ async fn views(uri: web::Path<String>, db: DB, config: Config) -> Result<HttpRes
   let t0 = std::time::Instant::now();
   let mut uri = uri.to_string();
   if uri.ends_with('/') { uri.pop(); }
+  uri = "/".to_string() + &uri;
 
   let res = web::block(move || {
     templates::main(uri, db, config.get_ref())
@@ -44,7 +46,6 @@ async fn main() -> std::io::Result<()> {
   // r2d2 pool
   let manager = r2d2_sqlite::SqliteConnectionManager::file("data/main.db");
   let db_pool = r2d2::Pool::new(manager).unwrap();
-
 
   HttpServer::new({
     let config = config.clone();

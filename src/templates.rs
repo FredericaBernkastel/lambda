@@ -1,15 +1,33 @@
 use std::error::Error;
 use maud::{DOCTYPE, html, Markup};
 use rusqlite::params;
+use path_tree::PathTree;
 use crate::config::Config;
 use crate::DB;
 
 pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Error>> {
   let db = db.get().unwrap();
   let root_url = &config.web.root_url;
-  let page = match uri.as_str() {
-    "home" => include!("templates/home.rs"),
-    _ => return Err("route not found".into())
+  lazy_static! {
+    static ref PATH_TREE: PathTree::<&'static str> = {
+      let mut tmp = PathTree::<&str>::new();
+      for path in vec![
+        "/home",
+        "/graffitis",
+        "/graffiti/:id"
+      ] { tmp.insert(path, path); };
+      tmp
+    };
+  };
+
+  let page = match PATH_TREE.find(uri.as_str()) {
+    Some((path, data)) => match *path {
+      "/home" => include!("templates/home.rs"),
+      "/graffitis" => include!("templates/graffitis.rs"),
+      "/graffiti/:id" => include!("templates/graffiti.rs"),
+      _=> unreachable!()
+    },
+    None => return Err("route not found".into())
   };
   Ok(html! {
     (DOCTYPE)
@@ -28,4 +46,25 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
       }
     }
   })
+}
+
+fn navigation(config: &Config) -> Markup {
+  html! {
+    .navigation {
+      .n_back { span {
+        svg {use xlink:href={ (config.web.root_url) "static/img/sprite.svg#chevron-circle-left" } {  }} "prev"
+      } }
+      .navi_link {
+        span { "1" }
+        @for i in 2..11 {
+          a href="#" { (i) }
+        }
+        span.nav_ext { "..." }
+        a href="#" { "18" }
+      }
+      .n_next { a href="#" {
+        "next" svg {use xlink:href={ (config.web.root_url) "static/img/sprite.svg#chevron-circle-right" } {  }}
+      } }
+    }
+  }
 }

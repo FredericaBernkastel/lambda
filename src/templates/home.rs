@@ -1,12 +1,12 @@
 html! {
-  .container page="home" {
-    .node100 {
+  .container {
+    .page-home {
       .node101 {
         .node103.boxed {
           p.box-title { "Most recent additions" }
           .images {
-            @for _ in 0..8 {
-              div {
+            @for i in 1..9 {
+              a href={ (root_url) "views/graffiti/" (i) } {
                 .image {  }
                 p.title { "Graffiti image" }
               }
@@ -16,8 +16,8 @@ html! {
         .node103.boxed {
           p.box-title { "Last checked graffiti" }
           .images {
-            @for _ in 0..4 {
-              div {
+            @for i in 1..5 {
+              a href={ (root_url) "views/graffiti/" (i) } {
                 .image {  }
                 p.title { "Graffiti image" }
               }

@@ -9,7 +9,7 @@
         .logo { (data) }
         .nav-menu {
           a href={ (root_url) "views/home" } { "Home" }
-          a href="#" { "Graffiti" }
+          a href={ (root_url) "views/graffitis" } { "Graffiti" }
           a href="#" { "Authors" }
           a href="#" { "Tags" }
           a href="#" { "Help" }
