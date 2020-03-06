@@ -7,7 +7,7 @@ html! {
           .images {
             @for i in 1..9 {
               a href={ (root_url) "views/graffiti/" (i) } {
-                .image {  }
+                .image {}
                 p.title { "Graffiti image" }
               }
             }
@@ -18,7 +18,7 @@ html! {
           .images {
             @for i in 1..5 {
               a href={ (root_url) "views/graffiti/" (i) } {
-                .image {  }
+                .image {}
                 p.title { "Graffiti image" }
               }
             }
@@ -28,7 +28,7 @@ html! {
       .node102 {
         .node104.boxed {
           p.box-title { "Recent activity map" }
-          .map {  }
+          .map {}
           p { "Map location" }
         }
         .node105.boxed {

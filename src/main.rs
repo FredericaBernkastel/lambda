@@ -56,7 +56,7 @@ async fn main() -> std::io::Result<()> {
         .wrap(middleware::Logger::default())
         .wrap(middleware::DefaultHeaders::new().header("content-type", "text/plain; charset=utf-8").content_type())
         .service(views)
-        .service(actix_files::Files::new("/static", "./data/static").use_etag(true))
+        .service(actix_files::Files::new("/static", "./data/static"))
 
         .default_service(
           // 404 for GET request
