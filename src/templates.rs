@@ -1,16 +1,17 @@
+use std::error::Error;
 use maud::{DOCTYPE, html, Markup};
 use rusqlite::params;
 use crate::config::Config;
 use crate::DB;
 
-pub fn main(uri: String, db: DB, config: &Config) -> Option<Markup> {
+pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Error>> {
   let db = db.get().unwrap();
   let root_url = &config.web.root_url;
   let page = match uri.as_str() {
     "home" => include!("templates/home.rs"),
-    _ => return None
+    _ => return Err("route not found".into())
   };
-  Some(html! {
+  Ok(html! {
     (DOCTYPE)
     html lang="en" {
       head {

@@ -2,7 +2,9 @@
 mod templates;
 mod config;
 
-use actix_web::{get, web, guard, App, HttpServer, HttpResponse, Result, middleware};
+use actix_web::{
+  get, web, guard, App, HttpServer, HttpResponse, Result, middleware, error::BlockingError
+};
 
 type DB = web::Data<r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>>;
 type Config = web::Data<config::Config>;
@@ -14,29 +16,21 @@ async fn views(uri: web::Path<String>, db: DB, config: Config) -> Result<HttpRes
   if uri.ends_with('/') { uri.pop(); }
 
   let res = web::block(move || {
-    templates::main(uri, db, config.get_ref()).ok_or(())
-  })
-    .await
+    templates::main(uri, db, config.get_ref())
+      .map_err(|e| {
+        eprintln!("Error: {:?}", e);
+        e.to_string()
+      })
+  }).await
     .map(|res| HttpResponse::Ok()
       .content_type("text/html; charset=utf-8")
       .body(res.into_string()))
-    .map_err(|_| HttpResponse::Forbidden().finish())?;
-  println!("profiling: {:?}", std::time::Instant::now().duration_since(t0));
-  Ok(res)
-}
+    .map_err(|e| match e {
+      BlockingError::Error(e) => HttpResponse::Forbidden().body(e),
+      BlockingError::Canceled => HttpResponse::InternalServerError().finish()
+    })?;
 
-#[get("/test/{id}")]
-async fn test(data: web::Path<u32>, db: DB) -> Result<HttpResponse> {
-  // execute sync code in threadpool
-  let res = web::block(move || {
-    let db = db.get().unwrap();
-    db.query_row("select `value` from `main` where `key` = $1", &[data.into_inner()], |row| {
-      row.get::<_, String>(0)
-    })
-  })
-    .await
-    .map(|value| HttpResponse::Ok().body(value))
-    .map_err(|_| HttpResponse::Forbidden())?;
+  println!("profiling: {:?}", std::time::Instant::now().duration_since(t0));
   Ok(res)
 }
 
@@ -61,7 +55,6 @@ async fn main() -> std::io::Result<()> {
         .wrap(middleware::Logger::default())
         .wrap(middleware::DefaultHeaders::new().header("content-type", "text/plain; charset=utf-8").content_type())
         .service(views)
-        .service(test)
         .service(actix_files::Files::new("/static", "./data/static").use_etag(true))
 
         .default_service(
