@@ -14,6 +14,7 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
       for path in vec![
         "/home",
         "/graffitis",
+        "/graffiti/add",
         "/graffiti/:id"
       ] { tmp.insert(path, path); };
       tmp
@@ -24,6 +25,7 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
     Some((path, data)) => match *path {
       "/home" => include!("templates/home.rs"),
       "/graffitis" => include!("templates/graffitis.rs"),
+      "/graffiti/add" => include!("templates/graffiti-add.rs"),
       "/graffiti/:id" => include!("templates/graffiti.rs"),
       _=> unreachable!()
     },

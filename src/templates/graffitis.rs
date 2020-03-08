@@ -2,7 +2,7 @@ html! {
   .container {
     .page-graffitis {
       .actions-wrapper {
-        a href="#" {
+        a href={ (root_url) "views/graffiti/add" } {
           span.action-btn#add-graffiti {
             "Add new graffiti"
             svg {use xlink:href={ (root_url) "static/img/sprite.svg#plus" }{}}
