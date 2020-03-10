@@ -23,7 +23,7 @@ html! {
         @for i in (1..=20).rev() {
           .row {
             .col1 { (i) }
-            .col2 { a.graffiti-img href="#" { img; } }
+            .col2 { a.graffiti-img href={ (root_url) "views/author/" (i) } { img; } }
             .col3 { "Name Surname Lastname" }
             .col4 { "23" }
             .col5 { "1" }

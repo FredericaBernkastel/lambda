@@ -1,12 +1,12 @@
 {
-  let id: u32 = data[0].1.parse()?;
+  let id: u32 = data.get("id").ok_or("")?.parse()?;
 
   html! {
     .container {
       .page-graffiti {
         .actions-wrapper {
           a href={ (root_url) "views/graffiti/" (id) "/edit" } {
-            span.action-btn#add-graffiti {
+            span.action-btn#edit {
               "Modify graffiti"
               svg {use xlink:href={ (root_url) "static/img/sprite.svg#edit" }{}}
             }
@@ -43,11 +43,11 @@
           .node101.boxed {
             p.box-title { "Author(s)" }
             .items {
-              .item { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href="#" { "Author Name 1" } }
-              .item.checked { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href="#" { "Author Name 2" } }
-              .item { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href="#" { "Author Name 3" } }
-              .item.checked { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href="#" { "Author Name 4" } }
-              .item { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href="#" { "Author Name 5" } }
+              .item { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 1" } }
+              .item.checked { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 2" } }
+              .item { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 3" } }
+              .item.checked { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 4" } }
+              .item { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 5" } }
             }
           }
         }

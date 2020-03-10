@@ -34,12 +34,12 @@ html! {
         .node105.boxed {
           p.box-title { "Last checked authors" }
           .authors {
-            a href="#" { "AuthrorName1" }
-            a href="#" { "AuthrorName2" }
-            a href="#" { "AuthrorName3" }
-            a href="#" { "AuthrorName4" }
-            a href="#" { "AuthrorName5" }
-            a href="#" { "AuthrorName6" }
+            a href={ (root_url) "views/author/1" } { "AuthrorName1" }
+            a href={ (root_url) "views/author/1" } { "AuthrorName2" }
+            a href={ (root_url) "views/author/1" } { "AuthrorName3" }
+            a href={ (root_url) "views/author/1" } { "AuthrorName4" }
+            a href={ (root_url) "views/author/1" } { "AuthrorName5" }
+            a href={ (root_url) "views/author/1" } { "AuthrorName6" }
           }
         }
       }

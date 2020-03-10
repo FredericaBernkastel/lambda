@@ -4,6 +4,7 @@ use rusqlite::params;
 use path_tree::PathTree;
 use crate::config::Config;
 use crate::DB;
+use std::collections::HashMap;
 
 pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Error>> {
   let db = db.get().unwrap();
@@ -18,20 +19,25 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
         "/graffiti/:id",
         "/graffiti/:id/edit",
         "/authors",
+        "/author/:id",
       ] { tmp.insert(path, path); };
       tmp
     };
   };
 
   let page = match PATH_TREE.find(uri.as_str()) {
-    Some((path, data)) => match *path {
-      "/home" => include!("templates/home.rs"),
-      "/graffitis" => include!("templates/graffitis.rs"),
-      "/graffiti/add" => include!("templates/graffiti-add.rs"),// -------
-      "/graffiti/:id" => include!("templates/graffiti.rs"),//           |
-      "/graffiti/:id/edit" => include!("templates/graffiti-add.rs"),// --
-      "/authors" => include!("templates/authors.rs"),
-      _=> unreachable!()
+    Some((path, data)) => {
+      let data: HashMap<_, _> = data.into_iter().collect();
+      match *path {
+        "/home" => include!("templates/home.rs"),
+        "/graffitis" => include!("templates/graffitis.rs"),
+        "/graffiti/add" => include!("templates/graffiti-add.rs"),// -------
+        "/graffiti/:id" => include!("templates/graffiti.rs"),//           |
+        "/graffiti/:id/edit" => include!("templates/graffiti-add.rs"),// --
+        "/authors" => include!("templates/authors.rs"),
+        "/author/:id" => include!("templates/author.rs"),
+        _=> unreachable!()
+      }
     },
     None => return Err("route not found".into())
   };
