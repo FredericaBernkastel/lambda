@@ -1,4 +1,29 @@
 {
+
+  /*enum ShiftTime {
+    morning = 0,
+    afternoon = 1,
+    night = 2
+  };
+
+  struct Location {
+
+  };
+
+  struct Data {
+    id: u32,
+    complaint_id: String,
+    date: String,
+    shift: ShiftTime,
+    intervening: String,
+    notes: String,
+    authors: Vec<String, bool>
+  };
+
+  if *path == "/graffiti/:id/edit" {
+
+  }*/
+
   let mar_image = |src: Option<&str>| {
     let src = match src {
       Some(src) => src,
@@ -38,6 +63,7 @@
             .node107_1.boxed {
               p.box-title { "Information" }
               .descr {
+                .row { .l { "ID: " }  .r { "#" } }
                 .row { .l { "Complaint ID: " }  .r { input type="text" placeholder="0000/0000" {  } } }
                 .row { .l { "Date: " }          .r { input type="text" placeholder="2018-01-01" {  } } }
                 .row { .l { "Time: " }          .r { input type="text" placeholder="00:00" {  } } }

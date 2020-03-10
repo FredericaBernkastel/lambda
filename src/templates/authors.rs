@@ -1,10 +1,10 @@
 html! {
   .container {
-    .page-graffitis {
+    .page-authors {
       .actions-wrapper {
-        a href={ (root_url) "views/graffiti/add" } {
+        a href="#" {
           span.action-btn#add-graffiti {
-            "Add new graffiti"
+            "Add new author"
             svg {use xlink:href={ (root_url) "static/img/sprite.svg#plus" }{}}
           }
         }
@@ -13,18 +13,22 @@ html! {
       .table {
         .row.head {
           .col1 { "ID" }
-          .col2 { "Graffiti" }
-          .col3 { "City" }
-          .col4 { "Date" }
-          .col5 { "Views" }
+          .col2 { "Image" }
+          .col3 { "Name" }
+          .col4 { "Age" }
+          .col5 { "Graffiti" }
+          .col6 { "Home city" }
+          .col7 { "Views" }
         }
         @for i in (1..=20).rev() {
           .row {
             .col1 { (i) }
-            .col2 { a.graffiti-img href={ (root_url) "views/graffiti/" (i) } { img {} } }
-            .col3 { "City name" }
-            .col4 { "2018-01-01" }
+            .col2 { a.graffiti-img href="#" { img; } }
+            .col3 { "Name Surname Lastname" }
+            .col4 { "23" }
             .col5 { "1" }
+            .col6 { "Madrid" }
+            .col7 { "1" }
           }
         }
       }

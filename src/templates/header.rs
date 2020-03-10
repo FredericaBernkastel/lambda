@@ -10,7 +10,7 @@
         .nav-menu {
           a href={ (root_url) "views/home" } { "Home" }
           a href={ (root_url) "views/graffitis" } { "Graffiti" }
-          a href="#" { "Authors" }
+          a href={ (root_url) "views/authors" } { "Authors" }
           a href="#" { "Tags" }
           a href="#" { "Help" }
         }

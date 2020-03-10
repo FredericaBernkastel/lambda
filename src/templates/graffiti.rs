@@ -5,7 +5,7 @@
     .container {
       .page-graffiti {
         .actions-wrapper {
-          a href="#" {
+          a href={ (root_url) "views/graffiti/" (id) "/edit" } {
             span.action-btn#add-graffiti {
               "Modify graffiti"
               svg {use xlink:href={ (root_url) "static/img/sprite.svg#edit" }{}}

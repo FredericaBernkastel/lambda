@@ -111,13 +111,16 @@ input[type="checkbox"] { margin: 0; }
 .page-graffitis .table { display: flex; flex-direction: column; border: solid 1px #dbdbdb; margin-bottom: 30px; }
   .page-graffitis .table .row { display: flex; justify-content: space-between; padding: 10px 0; }
   .page-graffitis .table .row + .row { border-top: solid 1px #dbdbdb; }
-    .page-graffitis .table .row > * { margin: 0 20px; display: flex; align-items: center; }
-    .page-graffitis .table .row > .col1 { flex-basis: 60px; }
-    .page-graffitis .table .row > .col2 { flex-basis: 100px; }
-    .page-graffitis .table .row > .col3 { flex-grow: 1; }
-    .page-graffitis .table .row > .col4 { flex-basis: 100px; }
-    .page-graffitis .table .row > .col5 { flex-basis: 60px; }
+    .page-graffitis .table .row > * { padding: 0 20px; display: flex; align-items: center; justify-content: flex-end; }
+    .page-graffitis .table .row > * + * { border-left: solid 1px #dbdbdb; position: relative; }
+    .page-graffitis .table .row > * + *::before { content: ''; position: absolute; top: -20px; left: -10px; background-color: #fff; width: 20px; height: 20px; }
+    .page-graffitis .table .row > .col1 { flex-basis: 100px; }
+    .page-graffitis .table .row > .col2 { flex-basis: 140px; justify-content: center; }
+    .page-graffitis .table .row > .col3 { flex-grow: 1; justify-content: flex-start; }
+    .page-graffitis .table .row > .col4 { flex-basis: 140px; }
+    .page-graffitis .table .row > .col5 { flex-basis: 100px; }
       .page-graffitis .table .graffiti-img { width: 100px; height: 75px; background: #000; }
+    .page-graffitis .table .row.head > * { justify-content: center; }
   .page-graffitis .navigation { margin-bottom: 30px; }
 
 .page-graffiti {  }
@@ -206,3 +209,20 @@ input[type="checkbox"] { margin: 0; }
     .img_upload_wrp .image .controls > .del { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; color: #f00; display: block; cursor: pointer; transition: text-shadow .2s; }
     .img_upload_wrp .image .controls > .del:hover { color: #ff6000; }
   .img_upload_wrp > .image:not(.processing):not(.add):hover .controls { visibility: visible; opacity: 1; }
+
+.page-authors .table { display: flex; flex-direction: column; border: solid 1px #dbdbdb; margin-bottom: 30px; }
+  .page-authors .table .row { display: flex; justify-content: space-between; padding: 10px 0; }
+  .page-authors .table .row + .row { border-top: solid 1px #dbdbdb; }
+    .page-authors .table .row > * { padding: 0 20px; display: flex; align-items: center; justify-content: flex-end; }
+    .page-authors .table .row > * + * { border-left: solid 1px #dbdbdb; position: relative; }
+    .page-authors .table .row > * + *::before { content: ''; position: absolute; top: -20px; left: -10px; background-color: #fff; width: 20px; height: 20px; }
+    .page-authors .table .row > .col1 { flex-basis: 100px; }
+    .page-authors .table .row > .col2 { flex-basis: 96px; justify-content: center; }
+    .page-authors .table .row > .col3 { flex-grow: 1; justify-content: flex-start; }
+    .page-authors .table .row > .col4 { flex-basis: 100px; }
+    .page-authors .table .row > .col5 { flex-basis: 100px; }
+    .page-authors .table .row > .col6 { flex-basis: 190px; }
+    .page-authors .table .row > .col7 { flex-basis: 100px; }
+      .page-authors .table .graffiti-img { width: 56px; height: 75px; background: #000; }
+    .page-authors .table .row.head > * { justify-content: center; }
+  .page-authors .navigation { margin-bottom: 30px; }

@@ -15,7 +15,9 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
         "/home",
         "/graffitis",
         "/graffiti/add",
-        "/graffiti/:id"
+        "/graffiti/:id",
+        "/graffiti/:id/edit",
+        "/authors",
       ] { tmp.insert(path, path); };
       tmp
     };
@@ -25,8 +27,10 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
     Some((path, data)) => match *path {
       "/home" => include!("templates/home.rs"),
       "/graffitis" => include!("templates/graffitis.rs"),
-      "/graffiti/add" => include!("templates/graffiti-add.rs"),
-      "/graffiti/:id" => include!("templates/graffiti.rs"),
+      "/graffiti/add" => include!("templates/graffiti-add.rs"),// -------
+      "/graffiti/:id" => include!("templates/graffiti.rs"),//           |
+      "/graffiti/:id/edit" => include!("templates/graffiti-add.rs"),// --
+      "/authors" => include!("templates/authors.rs"),
       _=> unreachable!()
     },
     None => return Err("route not found".into())
