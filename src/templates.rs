@@ -57,6 +57,8 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
         meta name="viewport" content="width=device-width";
 
         link rel="stylesheet" href={ (root_url) "static/style.css" } type="text/css" media="screen";
+        script type="text/javascript" src={ (root_url) "static/vendors.js" } {  }
+        script type="text/javascript" src={ (root_url) "static/script.js" } {  }
 
         title { "nipaa =^_^=" }
       }
