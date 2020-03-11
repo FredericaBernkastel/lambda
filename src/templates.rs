@@ -21,7 +21,9 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
         "/authors",
         "/author/add",
         "/author/:id",
-        "/author/:id/edit"
+        "/author/:id/edit",
+        "/tags",
+        "/help"
       ] { tmp.insert(path, path); };
       tmp
     };
@@ -40,6 +42,8 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
         "/author/add" => include!("templates/author-add.rs"),//------------
         "/author/:id" => include!("templates/author.rs"),//               |
         "/author/:id/edit" => include!("templates/author-add.rs"),// ------
+        "/tags" => include!("templates/tags.rs"),
+        "/help" => include!("templates/help.rs"),
         _=> unreachable!()
       }
     },

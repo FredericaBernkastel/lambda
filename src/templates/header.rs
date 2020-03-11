@@ -6,13 +6,13 @@
   html! {
     .header {
       .container {
-        .logo { (data) }
+        .logo { "Graffiti database" }
         .nav-menu {
           a href={ (root_url) "views/home" } { "Home" }
           a href={ (root_url) "views/graffitis" } { "Graffiti" }
           a href={ (root_url) "views/authors" } { "Authors" }
-          a href="#" { "Tags" }
-          a href="#" { "Help" }
+          a href={ (root_url) "views/tags" } { "Tags" }
+          a href={ (root_url) "views/help" } { "Help" }
         }
       }
     }

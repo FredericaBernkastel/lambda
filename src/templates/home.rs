@@ -1,6 +1,6 @@
 html! {
-  .container {
-    .page-home {
+  .page-home {
+    .container {
       .node101 {
         .node103.boxed {
           p.box-title { "Most recent additions" }

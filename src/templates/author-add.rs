@@ -23,8 +23,8 @@
   };
 
   html! {
-    .container {
-      .page-author-add {
+    .page-author-add {
+      .container {
         .actions-wrapper {
           a href="#" {
             span.action-btn#save {

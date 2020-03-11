@@ -2,8 +2,8 @@
   let id: u32 = data.get("id").ok_or("")?.parse()?;
 
   html! {
-    .container {
-      .page-author {
+    .page-author {
+      .container {
         .actions-wrapper {
           a href={ (root_url) "views/author/" (id) "/edit" } {
             span.action-btn#edit {

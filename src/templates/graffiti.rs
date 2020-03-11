@@ -2,8 +2,8 @@
   let id: u32 = data.get("id").ok_or("")?.parse()?;
 
   html! {
-    .container {
-      .page-graffiti {
+    .page-graffiti {
+      .container {
         .actions-wrapper {
           a href={ (root_url) "views/graffiti/" (id) "/edit" } {
             span.action-btn#edit {

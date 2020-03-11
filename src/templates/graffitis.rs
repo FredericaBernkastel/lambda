@@ -1,6 +1,6 @@
 html! {
-  .container {
-    .page-graffitis {
+  .page-graffitis {
+    .container {
       .actions-wrapper {
         a href={ (root_url) "views/graffiti/add" } {
           span.action-btn#add-graffiti {

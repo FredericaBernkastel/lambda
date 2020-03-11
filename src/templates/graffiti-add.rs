@@ -48,8 +48,8 @@
   };
 
   html! {
-    .container {
-      .page-graffiti-add {
+    .page-graffiti-add {
+      .container {
         .actions-wrapper {
           a href="#" {
             span.action-btn#save {

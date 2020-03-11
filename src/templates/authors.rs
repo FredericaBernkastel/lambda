@@ -1,6 +1,6 @@
 html! {
-  .container {
-    .page-authors {
+  .page-authors {
+    .container {
       .actions-wrapper {
         a href={ (root_url) "views/author/add" } {
           span.action-btn#add-author {
