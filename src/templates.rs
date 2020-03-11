@@ -19,7 +19,9 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
         "/graffiti/:id",
         "/graffiti/:id/edit",
         "/authors",
+        "/author/add",
         "/author/:id",
+        "/author/:id/edit"
       ] { tmp.insert(path, path); };
       tmp
     };
@@ -35,7 +37,9 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
         "/graffiti/:id" => include!("templates/graffiti.rs"),//           |
         "/graffiti/:id/edit" => include!("templates/graffiti-add.rs"),// --
         "/authors" => include!("templates/authors.rs"),
-        "/author/:id" => include!("templates/author.rs"),
+        "/author/add" => include!("templates/author-add.rs"),//------------
+        "/author/:id" => include!("templates/author.rs"),//               |
+        "/author/:id/edit" => include!("templates/author-add.rs"),// ------
         _=> unreachable!()
       }
     },

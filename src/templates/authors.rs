@@ -2,8 +2,8 @@ html! {
   .container {
     .page-authors {
       .actions-wrapper {
-        a href="#" {
-          span.action-btn#add-graffiti {
+        a href={ (root_url) "views/author/add" } {
+          span.action-btn#add-author {
             "Add new author"
             svg {use xlink:href={ (root_url) "static/img/sprite.svg#plus" }{}}
           }

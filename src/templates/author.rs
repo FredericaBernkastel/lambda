@@ -1,11 +1,11 @@
 {
-  let _id: u32 = data.get("id").ok_or("")?.parse()?;
+  let id: u32 = data.get("id").ok_or("")?.parse()?;
 
   html! {
     .container {
       .page-author {
         .actions-wrapper {
-          a href="#" {
+          a href={ (root_url) "views/author/" (id) "/edit" } {
             span.action-btn#edit {
               "Modify author"
               svg {use xlink:href={ (root_url) "static/img/sprite.svg#edit" }{}}

@@ -52,7 +52,7 @@
       .page-graffiti-add {
         .actions-wrapper {
           a href="#" {
-            span.action-btn#add-graffiti {
+            span.action-btn#save {
               "Save"
               svg {use xlink:href={ (root_url) "static/img/sprite.svg#save" }{}}
             }
@@ -104,7 +104,7 @@
           .node111.boxed {
             p.box-title { "Images" }
             .img_upload_wrp {
-              @for _ in 1..5 {
+              @for _ in 1..=4 {
                 (mar_image(None))
               }
               .image.add title="Upload images" {
