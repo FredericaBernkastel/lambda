@@ -31,8 +31,10 @@ pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> 
     };
   };
 
+  let __path_t;
   let page = match PATH_TREE.find(uri.as_str()) {
     Some((path, data)) => {
+      __path_t = path;
       let data: HashMap<_, _> = data.into_iter().collect();
       if *path == "/login" {
         include!("templates/login.rs")
@@ -72,6 +74,11 @@ pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> 
         script type="text/javascript" src={ (root_url) "static/script.js" } {  }
 
         title { "nipaa =^_^=" }
+
+        script type="text/javascript" {
+          "var __path_t = '" (__path_t) "';"
+          "var __root_url = '" (root_url) "';"
+        }
       }
       body {
         (page)

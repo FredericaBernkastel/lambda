@@ -11,6 +11,7 @@ mod model;
 
 use actix_web::{get, web, guard, App, HttpServer, HttpResponse, Result, middleware, error::BlockingError};
 use actix_session::{CookieSession, Session};
+use serde::{Serialize};
 
 type DB = web::Data<r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>>;
 type Config = web::Data<config::Config>;
@@ -66,14 +67,14 @@ async fn views(uri: web::Path<String>, db: DB, config: Config, session: Session)
 }
 
 #[post("/rpc/{uri:.+}")]
-async fn rpc(_uri: web::Path<String>, _db: DB, _config: Config, _session: Session) -> Result<HttpResponse> {
-  /*let uri = strip_slashes(uri.to_string());
+async fn rpc(uri: web::Path<String>, db: DB, config: Config, session: Session) -> Result<HttpResponse> {
+  let uri = strip_slashes(uri.to_string());
 
+  #[derive(Serialize)] struct Test { uri: String, value: String };
   Ok(HttpResponse::Ok().json(Test {
     uri: uri.to_string(),
     value: "nipaa ^_^".to_string(),
-  }))*/
-  Ok(HttpResponse::Ok().body(""))
+  }))
 }
 
 #[actix_rt::main]

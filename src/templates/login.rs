@@ -14,9 +14,9 @@ html! {
         input#hash type="hidden" value="{hash}";
         p.si-error {  }
         button#submit 
-          data-html="login <span class='icon'>fas fa-sign-in-alt</span>"
-          data-spinner={"<svg><use xlink:href='" (root_url) "static/img/sprite.svg#spinner'></use></svg>"}
-          data-action="admin/login" {
+          data-html={"login<span class='icon'><svg><use xlink:href='" (root_url) "static/img/sprite.svg#sign-in-alt'></use></svg></span>"}
+          data-spinner={"<svg class='fa-spinner'><use xlink:href='" (root_url) "static/img/sprite.svg#spinner'></use></svg>"}
+          data-action="login" {
             "login" span.icon { svg {use xlink:href={ (root_url) "static/img/sprite.svg#sign-in-alt" }{}} }
           }
       }
