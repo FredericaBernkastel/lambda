@@ -10,6 +10,7 @@ edition = "2018"
 actix-web = "2"
 actix-rt = "1"
 actix-files = "0.2.1"
+actix-session = "0.3.0"
 r2d2 = "0.8"
 r2d2_sqlite = "0.14"
 rusqlite = { version = "0.21.0", features = ["bundled"] }
@@ -19,6 +20,10 @@ toml = "*"
 serde = "*"
 path-tree = "0.1.9"
 lazy_static = "*"
+clap = "2.33.0"
+sha2 = "0.8.1"
+rand = "0.7.3"
+hex-slice = "0.1.4"
 
 [profile.release]
 lto = true

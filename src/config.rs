@@ -9,6 +9,8 @@ pub struct Config {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ServerConfig {
   pub bind_addr: String,
+  pub db_path: String,
+  pub password_salt: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

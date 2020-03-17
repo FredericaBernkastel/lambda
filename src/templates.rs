@@ -3,11 +3,11 @@ use maud::{DOCTYPE, html, Markup};
 use rusqlite::params;
 use path_tree::PathTree;
 use crate::config::Config;
-use crate::DB;
 use std::collections::HashMap;
 
+type DB = r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
+
 pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Error>> {
-  let db = db.get().unwrap();
   let root_url = &config.web.root_url;
   lazy_static! {
     static ref PATH_TREE: PathTree::<&'static str> = {
@@ -63,8 +63,8 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
         title { "nipaa =^_^=" }
       }
       body {
-        ({include!("templates/header.rs")})
-        p { (page) }
+        (include!("templates/header.rs"))
+        (page)
       }
     }
   })
