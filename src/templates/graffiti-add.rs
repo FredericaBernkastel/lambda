@@ -48,6 +48,8 @@
   };
 
   html! {
+    (include!("header.rs"))
+    
     .page-graffiti-add {
       .container {
         .actions-wrapper {

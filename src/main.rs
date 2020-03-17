@@ -11,7 +11,6 @@ mod model;
 
 use actix_web::{get, web, guard, App, HttpServer, HttpResponse, Result, middleware, error::BlockingError};
 use actix_session::{CookieSession, Session};
-use serde::{Serialize, Deserialize};
 
 type DB = web::Data<r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>>;
 type Config = web::Data<config::Config>;
@@ -20,7 +19,7 @@ fn redirect(path: &str, config: &Config) -> HttpResponse {
   HttpResponse::Found().header("location", config.web.root_url.clone() + path).finish()
 }
 
-async fn get_user(db: DB, config: &Config, session: Session) -> Option<model::User>{
+async fn get_user(db: DB, session: Session) -> Option<model::User>{
   // check session
   match session.get::<String>("ssid").ok().flatten() {
     Some(ssid) => web::block( move || -> Result<Option<model::User>, BlockingError<()>>  {
@@ -41,14 +40,14 @@ async fn views(uri: web::Path<String>, db: DB, config: Config, session: Session)
   let t0 = std::time::Instant::now();
   let uri = strip_slashes(uri.to_string());
 
-  let user = get_user(db.clone(), &config, session).await;
+  let user = get_user(db.clone(), session).await;
   if user.is_none() && (uri != "/login") { return Ok(redirect("views/login", &config)); };
   if user.is_some() && (uri == "/login") { return Ok(redirect("views/home",  &config)); };
 
   let res = web::block(move || {
     let db = db.get().unwrap();
 
-    templates::main(uri, db, config.get_ref())
+    templates::main(uri, db, config.get_ref(), user)
       .map_err(|e| {
         eprintln!("Error: {:?}", e);
         e.to_string()
@@ -67,13 +66,14 @@ async fn views(uri: web::Path<String>, db: DB, config: Config, session: Session)
 }
 
 #[post("/rpc/{uri:.+}")]
-async fn rpc(uri: web::Path<String>, db: DB, config: Config, session: Session) -> Result<HttpResponse> {
-  let uri = strip_slashes(uri.to_string());
+async fn rpc(_uri: web::Path<String>, _db: DB, _config: Config, _session: Session) -> Result<HttpResponse> {
+  /*let uri = strip_slashes(uri.to_string());
 
   Ok(HttpResponse::Ok().json(Test {
     uri: uri.to_string(),
     value: "nipaa ^_^".to_string(),
-  }))
+  }))*/
+  Ok(HttpResponse::Ok().body(""))
 }
 
 #[actix_rt::main]

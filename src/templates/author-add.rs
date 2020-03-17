@@ -23,6 +23,8 @@
   };
 
   html! {
+    (include!("header.rs"))
+    
     .page-author-add {
       .container {
         .actions-wrapper {

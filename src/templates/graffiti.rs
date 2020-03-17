@@ -2,6 +2,8 @@
   let id: u32 = data.get("id").ok_or("")?.parse()?;
 
   html! {
+    (include!("header.rs"))
+    
     .page-graffiti {
       .container {
         .actions-wrapper {

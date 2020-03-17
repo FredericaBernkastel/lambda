@@ -1,4 +1,6 @@
 html! {
+  (include!("header.rs"))
+  
   .page-graffitis {
     .container {
       .actions-wrapper {

@@ -3,16 +3,18 @@ use maud::{DOCTYPE, html, Markup};
 use rusqlite::params;
 use path_tree::PathTree;
 use crate::config::Config;
+use crate::model;
 use std::collections::HashMap;
 
 type DB = r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 
-pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Error>> {
+pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> Result<Markup, Box<dyn Error>> {
   let root_url = &config.web.root_url;
   lazy_static! {
     static ref PATH_TREE: PathTree::<&'static str> = {
       let mut tmp = PathTree::<&str>::new();
       for path in vec![
+        "/login",
         "/home",
         "/graffitis",
         "/graffiti/add",
@@ -32,19 +34,28 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
   let page = match PATH_TREE.find(uri.as_str()) {
     Some((path, data)) => {
       let data: HashMap<_, _> = data.into_iter().collect();
-      match *path {
-        "/home" => include!("templates/home.rs"),
-        "/graffitis" => include!("templates/graffitis.rs"),
-        "/graffiti/add" => include!("templates/graffiti-add.rs"),// -------
-        "/graffiti/:id" => include!("templates/graffiti.rs"),//           |
-        "/graffiti/:id/edit" => include!("templates/graffiti-add.rs"),// --
-        "/authors" => include!("templates/authors.rs"),
-        "/author/add" => include!("templates/author-add.rs"),//------------
-        "/author/:id" => include!("templates/author.rs"),//               |
-        "/author/:id/edit" => include!("templates/author-add.rs"),// ------
-        "/tags" => include!("templates/tags.rs"),
-        "/help" => include!("templates/help.rs"),
-        _=> unreachable!()
+      if *path == "/login" {
+        include!("templates/login.rs")
+      } else {
+        let _user = match user {
+          Some(user) => user,
+          None => return Err("unauthorized".into())
+        };
+
+        match *path {
+          "/home" => include!("templates/home.rs"),
+          "/graffitis" => include!("templates/graffitis.rs"),
+          "/graffiti/add" => include!("templates/graffiti-add.rs"),// -------
+          "/graffiti/:id" => include!("templates/graffiti.rs"),//           |
+          "/graffiti/:id/edit" => include!("templates/graffiti-add.rs"),// --
+          "/authors" => include!("templates/authors.rs"),
+          "/author/add" => include!("templates/author-add.rs"),//------------
+          "/author/:id" => include!("templates/author.rs"),//               |
+          "/author/:id/edit" => include!("templates/author-add.rs"),// ------
+          "/tags" => include!("templates/tags.rs"),
+          "/help" => include!("templates/help.rs"),
+          _ => unreachable!()
+        }
       }
     },
     None => return Err("route not found".into())
@@ -63,7 +74,6 @@ pub fn main(uri: String, db: DB, config: &Config) -> Result<Markup, Box<dyn Erro
         title { "nipaa =^_^=" }
       }
       body {
-        (include!("templates/header.rs"))
         (page)
       }
     }

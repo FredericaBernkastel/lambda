@@ -1,4 +1,6 @@
 html! {
+  (include!("header.rs"))
+  
   .page-home {
     .container {
       .node101 {
