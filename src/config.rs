@@ -10,12 +10,12 @@ pub struct Config {
 pub struct ServerConfig {
   pub bind_addr: String,
   pub db_path: String,
-  pub password_salt: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct WebConfig {
-  pub root_url: String
+  pub root_url: String,
+  pub secret_key: String,
 }
 
 pub fn load() -> Config {

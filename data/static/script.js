@@ -1,7 +1,49 @@
+'use strict';
+
 $(function(){
+	var __path_t = __glob.path_t,
+			__rpc		 = __glob.rpc,
+      __cors_h = __glob.cors_h;
+	
   $('a[href="#"]').on('click', function(e){
     e.preventDefault();
-  })
+  });
+
+  const rpc = {
+    Success:      0,
+    InvalidLogin: 101
+  };
+
+  /* any page
+   * ##########################################*/
+  {
+    var send_mutex = false;
+
+    $('.header .nav-menu .user .logout').on('click', function(){
+      if(send_mutex)
+        return;
+      send_mutex = true;
+
+      var data = {
+        'cors_h': __cors_h
+      };
+
+      $.ajax({
+        type: 'POST',
+        url: __rpc + 'auth/logout',
+        data: JSON.stringify(data),
+        success: function(data){
+          send_mutex = false;
+          var data = JSON.parse(data);
+          if (data.result === rpc.Success)
+            window.location.reload(false);
+        },
+        error: function(jqXHR, status, error){
+          send_mutex = false;
+        }
+      });
+    });
+  }
 
   /* /login                     
    * ##########################################*/
@@ -30,37 +72,31 @@ $(function(){
       var si_error = function(message){
         $wrapper.find('.si-error').html(message).css('display', 'block');
       }
-      var default_error = 'Server error!';
-      const SUCCESS             = '0';
-      const INVALID_QUERY       = '100';
-      const INVALID_EMAIL       = '101';
-      const INVALID_PASSWORD    = '102';
-      const USER_EXISTS         = '103';
-      const LOGIN_FAILED        = '104';
 
       if(validate()){
         send_mutex = true;
 
         self.html(self.attr('data-spinner'));
-        data = {
+        var data = {
           'login': $wrapper.find('input#login').prop('value'),
           'password': $wrapper.find('input#password').prop('value'),
-          'hash': $wrapper.find('input#hash').prop('value')
+          'cors_h': __cors_h
         }
+
+        var default_error   = 'Server error!';
+
         $.ajax({
           type: 'POST',
-          url: __root_url + 'rpc/' + self.attr('data-action'),
+          url: __rpc + 'auth/login',
           data: JSON.stringify(data),
           success: function(data){
             send_mutex = false;
             self.html(self.attr('data-html'));
+            var data = JSON.parse(data);
 
-            switch(data){
-              case INVALID_QUERY: si_error(default_error); break;
-              case INVALID_EMAIL:
-              case INVALID_PASSWORD:
-              case LOGIN_FAILED: si_error('Invalid login or password!'); break;
-              case SUCCESS: window.location.reload(false); break;
+            switch(data.result){
+              case rpc.InvalidLogin: si_error('Invalid login or password!'); break;
+              case rpc.Success: window.location.reload(false); break;
               default: si_error(default_error); break;
             }
           },

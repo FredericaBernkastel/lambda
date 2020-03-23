@@ -1,7 +1,7 @@
 [server]
 bind_addr = "127.0.0.1:8080" # <ip>:<port> or unix://sock
 db_path = "data/main.db"
-password_salt = "CuC-#RHa('(wzD5'`~N_Q}`d8_~{7QV]"
 
 [web]
 root_url = "/"
+secret_key = "CuC-#RHa('(wzD5'`~N_Q}`d8_~{7QV]"

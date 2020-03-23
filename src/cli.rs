@@ -36,7 +36,7 @@ help        print help message
           return Err("error: user already exists".into());
         }
 
-        let hash = auth::password_hash(password, config);
+        let hash = auth::password_hash(&password, config);
 
         db.prepare("insert into `users` (`login`, `password`) values (:login, :password)")?
           .insert(params![login, hash])?;

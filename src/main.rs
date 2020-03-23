@@ -1,32 +1,33 @@
 #![feature(proc_macro_hygiene)]
+#![feature(try_trait)]
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate clap;
 #[macro_use] extern crate rusqlite;
 #[macro_use] extern crate actix_web;
-mod templates;
+#[macro_use] extern crate json;
+mod model;
 mod config;
 mod auth;
+mod util;
 mod cli;
-mod model;
+mod rpc;
+mod templates;
 
 use actix_web::{get, web, guard, App, HttpServer, HttpResponse, Result, middleware, error::BlockingError};
 use actix_session::{CookieSession, Session};
-use serde::{Serialize};
 
 type DB = web::Data<r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>>;
+type DBConn = r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 type Config = web::Data<config::Config>;
 
 fn redirect(path: &str, config: &Config) -> HttpResponse {
   HttpResponse::Found().header("location", config.web.root_url.clone() + path).finish()
 }
 
-async fn get_user(db: DB, session: Session) -> Option<model::User>{
+async fn get_user(db: DB, session: &Session) -> Option<model::User>{
   // check session
   match session.get::<String>("ssid").ok().flatten() {
-    Some(ssid) => web::block( move || -> Result<Option<model::User>, BlockingError<()>>  {
-      let db = db.get().unwrap();
-      Ok(auth::check_session(ssid, db))
-    }).await.ok().flatten(),
+    Some(ssid) => auth::check_session(&ssid, db).await,
     None => None
   }
 }
@@ -37,11 +38,11 @@ fn strip_slashes(mut uri: String) -> String {
 }
 
 #[get("/views/{uri:.+}")]
-async fn views(uri: web::Path<String>, db: DB, config: Config, session: Session) -> Result<HttpResponse> {
+async fn sv_views(uri: web::Path<String>, db: DB, config: Config, session: Session) -> Result<HttpResponse> {
   let t0 = std::time::Instant::now();
   let uri = strip_slashes(uri.to_string());
 
-  let user = get_user(db.clone(), session).await;
+  let user = get_user(db.clone(), &session).await;
   if user.is_none() && (uri != "/login") { return Ok(redirect("views/login", &config)); };
   if user.is_some() && (uri == "/login") { return Ok(redirect("views/home",  &config)); };
 
@@ -67,14 +68,23 @@ async fn views(uri: web::Path<String>, db: DB, config: Config, session: Session)
 }
 
 #[post("/rpc/{uri:.+}")]
-async fn rpc(uri: web::Path<String>, db: DB, config: Config, session: Session) -> Result<HttpResponse> {
+async fn sv_rpc(uri: web::Path<String>, post_data: bytes::Bytes, db: DB, config: Config, session: Session) -> Result<HttpResponse, HttpResponse> {
+  let t0 = std::time::Instant::now();
   let uri = strip_slashes(uri.to_string());
 
-  #[derive(Serialize)] struct Test { uri: String, value: String };
-  Ok(HttpResponse::Ok().json(Test {
-    uri: uri.to_string(),
-    value: "nipaa ^_^".to_string(),
-  }))
+  let user = get_user(db.clone(), &session).await;
+  if user.is_none() && (uri != "/auth/login") { return Ok(HttpResponse::Unauthorized().finish()); };
+
+  let res = rpc::main(uri, post_data, db, config.get_ref(), user, session)
+    .await
+    .map(|res| HttpResponse::Ok().json(res))
+    .map_err(|e| {
+      eprintln!("Error: {:?}", e);
+      HttpResponse::Forbidden().body(e.to_string())
+    });
+
+  println!("profiling: {:?}", std::time::Instant::now().duration_since(t0));
+  res
 }
 
 #[actix_rt::main]
@@ -98,9 +108,9 @@ async fn main() -> std::io::Result<()> {
         .data(config.to_owned())
         .wrap(middleware::Logger::default())
         .wrap(middleware::DefaultHeaders::new().header("content-type", "text/plain; charset=utf-8").content_type())
-        .wrap(CookieSession::signed(config.server.password_salt.as_bytes()).secure(false))
-        .service(views)
-        .service(rpc)
+        .wrap(CookieSession::signed(config.web.secret_key.as_bytes()).secure(false))
+        .service(sv_views)
+        .service(sv_rpc)
         .service(actix_files::Files::new("/static", "./data/static"))
 
         .default_service(

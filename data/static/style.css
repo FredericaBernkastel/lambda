@@ -104,7 +104,10 @@ select { padding: 2px 0; }
 .header { margin-bottom: 15px; }
   .header .logo { font-family: Consolas, monaco, monospace; text-align: center; font-weight: bold; font-size: 32px; margin: 30px 0; }
   .header .nav-menu { font-size: 16px; display: flex; border: solid 1px #dbdbdb; padding: 10px 20px; }
-    .header .nav-menu > a { margin-right: 30px; }
+    .header .nav-menu .pages > a { margin-right: 30px; }
+    .header .nav-menu .user { margin-left: auto; display: flex; align-items: center; }
+      .header .nav-menu .user .icon-user { width: 15px; height: 15px; margin-right: 8px; color: #dbdbdb; }
+      .header .nav-menu .user .logout { width: 15px; height: 15px; margin-left: 8px; cursor: pointer; }
 
 .page-home > .container { display: flex; }
   .page-home .node101 { margin-right: 15px; flex-basis: 900px; }
