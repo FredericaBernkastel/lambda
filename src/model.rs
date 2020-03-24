@@ -1,3 +1,5 @@
+use serde::{Serialize, Deserialize};
+
 #[derive(Debug)]
 pub struct User {
   pub id: u32,
@@ -10,3 +12,33 @@ pub struct Session {
   pub uid: u32,
   pub expires: u64
 }
+
+#[derive(Serialize, Deserialize)]
+pub enum ShiftTime {
+  Morning = 0,
+  Afternoon = 1,
+  Night = 2
+}
+
+pub struct Graffiti {
+  pub id: u32,
+  pub complaint_id: String,
+  pub datetime: u64,
+  pub shift_time: ShiftTime,
+  pub intervening: String,
+  pub companions: u32,
+  pub notes: String,
+  pub views: u32
+}
+
+pub struct Location {
+  pub graffiti_id: u32,
+  pub country: String,
+  pub city: String,
+  pub street: String,
+  pub place: String,
+  pub property: String,
+  pub gps_long: f64,
+  pub gps_lat: f64
+}
+

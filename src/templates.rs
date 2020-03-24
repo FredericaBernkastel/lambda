@@ -4,7 +4,7 @@ use path_tree::PathTree;
 use crate::{util, config::Config, model, DBConn as DB};
 use std::collections::HashMap;
 
-pub fn main(uri: String, _db: DB, config: &Config, user: Option<model::User>) -> Result<Markup, Box<dyn Error>> {
+pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> Result<Markup, Box<dyn Error>> {
   let root_url = config.web.root_url.as_str();
   let cors_h = util::gen_cors_hash(util::get_timestamp(), config);
   lazy_static! {
@@ -81,9 +81,6 @@ pub fn main(uri: String, _db: DB, config: &Config, user: Option<model::User>) ->
             rpc: format!("{}rpc/", root_url),
             cors_h: cors_h
           }).dump())) ";"
-          //"var __path_t = '" (__path_t) "';"
-          //"var __root_url = '" (root_url) "';"
-          //"var __rpc = '" (root_url) "rpc/';"
         }
       }
       body {

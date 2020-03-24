@@ -1,10 +1,11 @@
 'use strict';
 
 $(function(){
-	var __path_t = __glob.path_t,
-			__rpc		 = __glob.rpc,
-      __cors_h = __glob.cors_h;
-	
+  var __path_t    = __glob.path_t,
+      __root_url  = __glob.root_url,
+      __rpc       = __glob.rpc,
+      __cors_h    = __glob.cors_h;
+  
   $('a[href="#"]').on('click', function(e){
     e.preventDefault();
   });
@@ -115,5 +116,81 @@ $(function(){
         $wrapper.find('#submit').trigger('click');
       }
     });
+  }
+
+  /* /graffiti/add                    
+   * ##########################################*/
+  if (__path_t === '/graffiti/add') {
+    var send_mutex = false;
+    var $wrapper = $('.page-graffiti-add');
+
+    $wrapper.find('.actions-wrapper #save').on('click', function(){
+      if(send_mutex)
+        return;
+      send_mutex = true;
+
+      var datetime = function() {
+        var date = $wrapper.find('#date').val();
+        var time = $wrapper.find('#time').val();
+        if (!date) return null;
+
+        datetime = date + 'T' + (time ? time : '00:00:00');
+        datetime = Date.parse(datetime) / 1000; // timestamp in seconds;
+        if (!datetime) return null;
+        return datetime;
+      }();
+
+      var gps = function() {
+        var data = $wrapper
+          .find('#gps')
+          .val()
+          .split(',')
+          .map(function(x){ return +(x.trim()); });
+
+        var e = {lat: null, long: null};
+        if(data.length !== 2) return e;
+        if(!data[0] || !data[1]) return e;
+        return { lat: data[0], long: data[1] };
+      }();
+
+      var data = {
+        'cors_h': __cors_h,
+        'graffiti': {
+          'complaint_id': $wrapper.find('#complaint_id').val(),
+          'datetime': datetime,
+          'shift_time': +$wrapper.find('#shift_time').val(),
+          'intervening': $wrapper.find('#intervening').val(),
+          'companions': 0,
+          'notes': $wrapper.find('#notes').val(),
+        },
+        'location': {
+          'country': $wrapper.find('#country').val(),
+          'city': $wrapper.find('#city').val(),
+          'street': $wrapper.find('#street').val(),
+          'place': $wrapper.find('#place').val(),
+          'property': $wrapper.find('#property').val(),
+          'gps_long': gps.lat,
+          'gps_lat': gps.long
+        }
+      }
+
+      $.ajax({
+        type: 'POST',
+        url: __rpc + 'graffiti/add',
+        data: JSON.stringify(data),
+        success: function(data){
+          send_mutex = false;
+          var data = JSON.parse(data);
+
+          console.log(JSON.stringify(data, null, 2));
+
+          if (data.result === rpc.Success)
+            window.location = __root_url + 'views/graffiti/' + data.id;
+        },
+        error: function(jqXHR, status, error){
+          send_mutex = false;
+        }
+      });
+    })
   }
 })

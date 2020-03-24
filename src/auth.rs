@@ -3,21 +3,7 @@ use hex_slice::AsHex;
 use actix_session::Session;
 use actix_web::web;
 use crate::{util, config::Config, model, DB};
-
-#[derive(Debug)]
-pub enum Error {
-  InternalError { description: String },
-  InvalidLogin
-}
-impl From<rusqlite::Error> for Error {
-  fn from(error: rusqlite::Error) -> Self {
-    return Error::InternalError { description: error.to_string() };
-}}
-impl<T> From<actix_web::error::BlockingError<T>> for Error
-  where T: std::fmt::Debug {
-  fn from(error: actix_web::error::BlockingError<T>) -> Self {
-    return Error::InternalError { description: error.to_string() };
-}}
+use crate::rpc::RpcError as Error;
 
 pub fn password_hash(password: &String, config: &Config) -> String {
   format!("{:02x}", Sha256::digest(format!("{}{}", password, config.web.secret_key).as_bytes()))

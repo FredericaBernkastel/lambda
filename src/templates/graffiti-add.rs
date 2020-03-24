@@ -53,11 +53,9 @@
     .page-graffiti-add {
       .container {
         .actions-wrapper {
-          a href="#" {
-            span.action-btn#save {
-              "Save"
-              svg {use xlink:href={ (root_url) "static/img/sprite.svg#save" }{}}
-            }
+          span.action-btn#save {
+            "Save"
+            svg {use xlink:href={ (root_url) "static/img/sprite.svg#save" }{}}
           }
         }
         .row1 {
@@ -66,16 +64,22 @@
               p.box-title { "Information" }
               .descr {
                 .row { .l { "ID: " }  .r { "#" } }
-                .row { .l { "Complaint ID: " }  .r { input type="text" placeholder="0000/0000" {  } } }
-                .row { .l { "Date: " }          .r { input type="text" placeholder="2018-01-01" {  } } }
-                .row { .l { "Time: " }          .r { input type="text" placeholder="00:00" {  } } }
-                .row { .l { "Shift: " }         .r { input type="text" {  } } }
-                .row { .l { "Intervening: " }   .r { input type="text" placeholder="0000/0000" {  } } }
+                .row { .l { "Complaint ID: " }  .r { input#complaint_id type="text" placeholder="0000/0000" {  } } }
+                .row { .l { "Date: " }          .r { input#date type="text" placeholder="2018-01-01" {  } } }
+                .row { .l { "Time: " }          .r { input#time type="text" placeholder="00:00" {  } } }
+                .row { .l { "Shift: " }         .r { 
+                  select#shift_time {
+                    option value="1" { "afternoon" }
+                    option value="0" { "morning" }
+                    option value="2" { "night" }
+                  }
+                }}
+                .row { .l { "Intervening: " }   .r { input#intervening type="text" {  } } }
               }
             }
             .node107_2.boxed { 
               p.box-title { "GPS location" }
-              input type="text" placeholder="0.0, 0.0" {  }
+              input#gps type="text" placeholder="0.0, 0.0" {  }
             }
           }
           .node108.boxed {
@@ -89,16 +93,16 @@
           }
           .node109.boxed {
             p.box-title { "Notes" }
-            textarea {  }
+            textarea#notes {  }
           }
           .node110.boxed {
             p.box-title { "Location" }
             .descr {
-              .row { .l { "Country: " }  .r { input type="text" {  } } }
-              .row { .l { "City: " }     .r { input type="text" {  } } }
-              .row { .l { "Street: " }   .r { input type="text" {  } } }
-              .row { .l { "Property: " } .r { input type="text" {  } } }
-              .row { .l { "Place: " }    .r { input type="text" {  } } }
+              .row { .l { "Country: " }  .r { input#country type="text" {  } } }
+              .row { .l { "City: " }     .r { input#city type="text" {  } } }
+              .row { .l { "Street: " }   .r { input#street type="text" {  } } }
+              .row { .l { "Property: " } .r { input#property type="text" {  } } }
+              .row { .l { "Place: " }    .r { input#place type="text" {  } } }
             }
           }
         }
