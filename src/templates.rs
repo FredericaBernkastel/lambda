@@ -1,8 +1,10 @@
 use std::error::Error;
 use maud::{DOCTYPE, html, Markup, PreEscaped};
 use path_tree::PathTree;
-use crate::{util, config::Config, model, DBConn as DB};
+use strum::IntoEnumIterator;
+use num_traits::FromPrimitive;
 use std::collections::HashMap;
+use crate::{util, config::Config, model, DBConn as DB};
 
 pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> Result<Markup, Box<dyn Error>> {
   let root_url = config.web.root_url.as_str();
@@ -32,8 +34,8 @@ pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> 
   let page = match PATH_TREE.find(uri.as_str()) {
     Some((path, data)) => {
       let path = *path;
-      __path_t = path;
       let data: HashMap<_, _> = data.into_iter().collect();
+      __path_t = (path, data.clone());
       if path == "/login" {
         include!("templates/login.rs")
       } else {
@@ -76,7 +78,8 @@ pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> 
 
         script type="text/javascript" {
           "var __glob = " (PreEscaped((object!{
-            path_t: __path_t,
+            path_t: __path_t.0,
+            data: __path_t.1,
             root_url: root_url,
             rpc: format!("{}rpc/", root_url),
             cors_h: cors_h

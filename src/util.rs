@@ -1,6 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use sha2::{Sha256, Digest};
 use chrono::{Utc, prelude::DateTime};
+use maud::{html, Markup};
 use crate::config::Config;
 
 pub fn get_timestamp() -> u64 {
@@ -31,4 +32,11 @@ pub fn check_cors_hash(hash: &str, config: &Config) -> bool {
   };
   gen_cors_hash(timestamp, config) == hash &&
     timestamp < get_timestamp()
+}
+
+pub fn markup_br(text: String) -> Markup {
+  html! {
+    @for line in text.split("\n") {
+      (line) br;
+    }}
 }

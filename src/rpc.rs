@@ -16,17 +16,17 @@ enum ErrorCode {
 
 #[derive(Debug)]
 pub enum RpcError {
-  InternalError { description: String },
+  InternalError { d: String },
   InvalidLogin
 }
 impl From<rusqlite::Error> for RpcError {
   fn from(error: rusqlite::Error) -> Self {
-    return RpcError::InternalError { description: error.to_string() };
+    return RpcError::InternalError { d: error.to_string() };
   }}
 impl<T> From<actix_web::error::BlockingError<T>> for RpcError
   where T: std::fmt::Debug {
   fn from(error: actix_web::error::BlockingError<T>) -> Self {
-    return RpcError::InternalError { description: error.to_string() };
+    return RpcError::InternalError { d: error.to_string() };
   }}
 
 pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: Option<model::User>, session: Session) -> Result<String, Box<dyn Error>> {
@@ -46,6 +46,8 @@ pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: 
         "/auth/login",
         "/auth/logout",
         "/graffiti/add",
+        "/graffiti/edit",
+        "/graffiti/delete",
       ] { tmp.insert(path, path); };
       tmp
     };
@@ -66,6 +68,8 @@ pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: 
         match path {
           "/auth/logout" => auth_logout(db, session).await?,
           "/graffiti/add" => graffiti_add(post_data, db).await?,
+          "/graffiti/edit" => graffiti_edit(post_data, db).await?,
+          "/graffiti/delete" => graffiti_delete(post_data, db).await?,
           _ => unreachable!()
         }
       }
@@ -85,8 +89,8 @@ async fn auth_login(post_data: Bytes, db: DB, config: &Config, session: Session)
   let result = match auth::login(&request.login, &request.password, db, config, session).await {
     Ok(_) => ErrorCode::Success as u32,
     Err(RpcError::InvalidLogin) => ErrorCode::InvalidLogin as u32,
-    Err(RpcError::InternalError {description}) => {
-      eprintln!("Error: {}", description);
+    Err(RpcError::InternalError {d}) => {
+      eprintln!("Error: {}", d);
       ErrorCode::InternalError as u32
     }
   };
@@ -197,5 +201,103 @@ async fn graffiti_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Err
   Ok(object!{
     result: ErrorCode::Success as u32,
     id: graffiti_id
+  })
+}
+
+///graffiti/edit
+async fn graffiti_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+  #[derive(Serialize, Deserialize)] struct Graffiti {
+    id: u32,
+    complaint_id: String,
+    datetime: Option<i64>,
+    shift_time: u8,
+    intervening: String,
+    companions: u32,
+    notes: String,
+  };
+  #[derive(Serialize, Deserialize)] struct Location {
+    country: String,
+    city: String,
+    street: String,
+    place: String,
+    property: String,
+    gps_long: Option<f64>,
+    gps_lat: Option<f64>
+  };
+  #[derive(Serialize, Deserialize)] struct Request {
+    graffiti: Graffiti,
+    location: Location
+  };
+  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+
+  web::block(move || -> Result<(), RpcError> {
+    let db = db.get().unwrap();
+
+    // update graffiti
+    db.execute_named("
+      update `graffiti`
+        set `complaint_id` = :complaint_id,
+            `datetime` = :datetime,
+            `shift_time` = :shift_time,
+            `intervening` = :intervening,
+            `companions` = :companions,
+            `notes` = :notes
+        where `id` = :id",
+      named_params![
+        ":id":            request.graffiti.id,
+        ":complaint_id":  request.graffiti.complaint_id,
+        ":datetime":      request.graffiti.datetime,
+        ":shift_time":    request.graffiti.shift_time,
+        ":intervening":   request.graffiti.intervening,
+        ":companions":    request.graffiti.companions,
+        ":notes":         request.graffiti.notes,
+    ])?;
+
+    // update location
+    db.execute_named("
+      update `location`
+        set `country` = :country,
+            `city` = :city,
+            `street` = :street,
+            `place` = :place,
+            `property` = :property,
+            `gps_long` = :gps_long,
+            `gps_lat` = :gps_lat
+        where `graffiti_id` = :graffiti_id",
+      named_params![
+        ":graffiti_id": request.graffiti.id,
+        ":country": request.location.country,
+        ":city": request.location.city,
+        ":street": request.location.street,
+        ":place": request.location.place,
+        ":property": request.location.property,
+        ":gps_long": request.location.gps_long,
+        ":gps_lat": request.location.gps_lat,
+    ])?;
+
+    Ok(())
+  }).await.map_err(|e| e.to_string())?;
+
+  Ok(object!{
+    result: ErrorCode::Success as u32
+  })
+}
+
+///graffiti/delete
+async fn graffiti_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+  #[derive(Serialize, Deserialize)] struct Request {
+    id: u32
+  };
+  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+
+  web::block(move || -> Result<(), RpcError> {
+    let db = db.get().unwrap();
+    db.execute("delete from `location` where `graffiti_id` = :id", params![request.id])?;
+    db.execute("delete from `graffiti` where `id` = :id", params![request.id])?;
+    Ok(())
+  }).await.map_err(|e| e.to_string())?;
+
+  Ok(object!{
+    result: ErrorCode::Success as u32
   })
 }

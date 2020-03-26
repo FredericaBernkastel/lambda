@@ -1,10 +1,10 @@
 #![feature(proc_macro_hygiene)]
-#![feature(try_trait)]
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate clap;
 #[macro_use] extern crate rusqlite;
 #[macro_use] extern crate actix_web;
 #[macro_use] extern crate json;
+#[macro_use] extern crate num_derive;
 mod model;
 mod config;
 mod auth;
@@ -90,6 +90,7 @@ async fn sv_rpc(uri: web::Path<String>, post_data: bytes::Bytes, db: DB, config:
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
   std::env::set_var("RUST_LOG", "actix_web=debug");
+  std::env::set_var("RUST_BACKTRACE", "1");
   env_logger::init();
 
   let config = config::load();

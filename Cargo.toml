@@ -1,6 +1,6 @@
 [package]
 name = "lambda"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["FredericaBernkastel <bernkastel.frederica@protonmail.com>"]
 edition = "2018"
 
@@ -28,6 +28,11 @@ sha2 = "0.8.1"
 rand = "0.7.3"
 hex-slice = "0.1.4"
 chrono = "0.4"
+num = "0.2"
+num-derive = "0.3"
+num-traits = "0.2"
+strum = "0.18.0"
+strum_macros = "0.18.0"
 
 [profile.release]
 lto = true

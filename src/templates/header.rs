@@ -1,5 +1,32 @@
 {
   html! {
+
+    .popup-wrapper#error {
+      .popup {
+        p.title { "Error!" }
+        .inner { 
+          .message {  }
+          .actions-wrapper { 
+            span.action-btn#close { "Ok" }
+          }
+        }
+      }
+    }
+
+    .popup-wrapper#warning {
+      .popup {
+        p.title { 
+          svg {use xlink:href={ (root_url) "static/img/sprite.svg#exclamation-triangle" }{}} }
+        .inner { 
+          .message {  } 
+          .actions-wrapper {
+            span.action-btn.red#ok { "Ok" }
+            span.action-btn#cancel { "Cancel" }
+          }
+        }
+      }
+    }
+
     .header {
       .container {
         .logo { "Graffiti database" }

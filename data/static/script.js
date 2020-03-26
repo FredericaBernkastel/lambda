@@ -5,6 +5,39 @@ $(function(){
       __root_url  = __glob.root_url,
       __rpc       = __glob.rpc,
       __cors_h    = __glob.cors_h;
+
+
+  //====================== popups
+  function display_error(message){
+    var popup = $('.popup-wrapper#error');
+    popup.find('.message').html(message);
+    popup.find('.action-btn#close')
+      .off('click')
+      .on('click', function(){
+        popup.css('display', 'none');
+      });
+    popup.css('display', 'flex');
+    return popup;
+  };
+
+  function display_warning(message, callback){
+    var popup = $('.popup-wrapper#warning');
+    popup.find('.message').html(message);
+    popup.find('.action-btn#cancel')
+      .off('click')
+      .on('click', function(){
+        popup.css('display', 'none');
+      });
+    popup.find('.action-btn#ok')
+      .off('click')
+      .on('click', function(){
+        var result = callback();
+        if(result !== false)
+          popup.css('display', 'none');
+      });
+    popup.css('display', 'flex');
+    return popup;
+  }
   
   $('a[href="#"]').on('click', function(e){
     e.preventDefault();
@@ -118,11 +151,18 @@ $(function(){
     });
   }
 
-  /* /graffiti/add                    
+  /* /graffiti/add    
+   * /graffiti/:id/edit                
    * ##########################################*/
-  if (__path_t === '/graffiti/add') {
+  if (__path_t === '/graffiti/add' || __path_t === '/graffiti/:id/edit') {
     var send_mutex = false;
     var $wrapper = $('.page-graffiti-add');
+
+    var __rpc_fn;
+    switch (__path_t) {
+      case '/graffiti/add':      __rpc_fn = __rpc + 'graffiti/add'; break;
+      case '/graffiti/:id/edit': __rpc_fn = __rpc + 'graffiti/edit'; break;
+    }
 
     $wrapper.find('.actions-wrapper #save').on('click', function(){
       if(send_mutex)
@@ -134,7 +174,7 @@ $(function(){
         var time = $wrapper.find('#time').val();
         if (!date) return null;
 
-        datetime = date + 'T' + (time ? time : '00:00:00');
+        datetime = date + 'T' + (time ? time : '00:00:00') + 'Z';
         datetime = Date.parse(datetime) / 1000; // timestamp in seconds;
         if (!datetime) return null;
         return datetime;
@@ -169,23 +209,30 @@ $(function(){
           'street': $wrapper.find('#street').val(),
           'place': $wrapper.find('#place').val(),
           'property': $wrapper.find('#property').val(),
-          'gps_long': gps.lat,
-          'gps_lat': gps.long
+          'gps_long': gps.long,
+          'gps_lat': gps.lat
         }
       }
 
+      if (__path_t === '/graffiti/:id/edit')
+        data['graffiti']['id'] = +__glob.data['id'];
+
       $.ajax({
         type: 'POST',
-        url: __rpc + 'graffiti/add',
+        url: __rpc_fn,
         data: JSON.stringify(data),
-        success: function(data){
+        success: function(response){
           send_mutex = false;
-          var data = JSON.parse(data);
+          var response = JSON.parse(response);
 
-          console.log(JSON.stringify(data, null, 2));
-
-          if (data.result === rpc.Success)
-            window.location = __root_url + 'views/graffiti/' + data.id;
+          if (response.result === rpc.Success){
+            var id;
+            if (__path_t === '/graffiti/:id/edit')
+              id = +__glob.data['id'];
+            else
+              id = response.id;
+            window.location = __root_url + 'views/graffiti/' + id;
+          }
         },
         error: function(jqXHR, status, error){
           send_mutex = false;
@@ -193,4 +240,38 @@ $(function(){
       });
     })
   }
+
+  /* /graffiti/:id               
+   * ##########################################*/
+  if (__path_t === '/graffiti/:id') {
+    var send_mutex = false;
+    var $wrapper = $('.page-graffiti');
+
+    $wrapper.find('.actions-wrapper #delete').on('click', function(){
+      display_warning('Delete graffiti?', function(){
+        var send_mutex = true;
+        var data = {
+          'cors_h': __cors_h,
+          'id': +__glob.data['id']
+        };
+
+        $.ajax({
+          type: 'POST',
+          url: __rpc + 'graffiti/delete',
+          data: JSON.stringify(data),
+          success: function(response){
+            send_mutex = false;
+            var response = JSON.parse(response);
+
+            if (response.result === rpc.Success)
+              window.location = __root_url + 'views/graffitis';
+          },
+          error: function(jqXHR, status, error){
+            send_mutex = false;
+          }
+        });
+      });
+    });
+  }
+
 })

@@ -104,7 +104,7 @@ pub async fn login(login: &String, password: &String, db: DB, config: &Config, s
 
   // set session cookie
   session.set("ssid", ssid_cookie)
-    .map_err(|e| Error::InternalError {description: e.to_string()})?;
+    .map_err(|e| Error::InternalError {d: e.to_string()})?;
 
   Ok(())
 }
