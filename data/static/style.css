@@ -266,7 +266,7 @@ select { padding: 2px 0; }
           .page-author .row1 .node113_1 .link-prev svg,
           .page-author .row1 .node113_1 .link-next svg { width: 50px; height: 80px; color: #888; }
         .page-author .row1 .node113_1 .author-image { width: 170px; height: 226px; margin: 0 20px; background-color: #000; }
-      .page-author .row1 .node113_2 { margin-bottom: 15px; }
+      .page-author .row1 .node113_2 { margin-bottom: 15px; min-width: 310px; }
         .page-author .row1 .node113_2 .descr > .row { display: flex; justify-content: space-between; }
         .page-author .row1 .node113_2 .descr > .row + .row { margin-top: 8px; }
           .page-author .row1 .node113_2 .descr > .row > .l { text-align: right; font-weight: bold; min-width: 90px; margin-right: 14px;}

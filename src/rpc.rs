@@ -11,7 +11,8 @@ use crate::{util, config::Config, auth, model, DB};
 enum ErrorCode {
   Success = 0,
   InternalError = 100,
-  InvalidLogin = 101
+  InvalidLogin = 101,
+  InvalidRequest = 102
 }
 
 #[derive(Debug)]
@@ -48,6 +49,9 @@ pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: 
         "/graffiti/add",
         "/graffiti/edit",
         "/graffiti/delete",
+        "/author/add",
+        "/author/edit",
+        "/author/delete",
       ] { tmp.insert(path, path); };
       tmp
     };
@@ -70,6 +74,9 @@ pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: 
           "/graffiti/add" => graffiti_add(post_data, db).await?,
           "/graffiti/edit" => graffiti_edit(post_data, db).await?,
           "/graffiti/delete" => graffiti_delete(post_data, db).await?,
+          "/author/add" => author_add(post_data, db).await?,
+          "/author/edit" => author_edit(post_data, db).await?,
+          "/author/delete" => author_delete(post_data, db).await?,
           _ => unreachable!()
         }
       }
@@ -294,6 +301,136 @@ async fn graffiti_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn 
     let db = db.get().unwrap();
     db.execute("delete from `location` where `graffiti_id` = :id", params![request.id])?;
     db.execute("delete from `graffiti` where `id` = :id", params![request.id])?;
+    Ok(())
+  }).await.map_err(|e| e.to_string())?;
+
+  Ok(object!{
+    result: ErrorCode::Success as u32
+  })
+}
+
+///author/add
+async fn author_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+  #[derive(Serialize, Deserialize)] struct Request {
+    name: String,
+    age: Option<u32>,
+    height: Option<u32>,
+    handedness: Option<u8>,
+    home_city: String,
+    social_networks: String,
+    notes: String,
+  };
+  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+
+  if request.name.is_empty() {
+    return Ok(object! {
+      result: ErrorCode::InvalidRequest as u32
+    })
+  }
+
+  let author_id = web::block(move || -> Result<i64, RpcError> {
+    let db = db.get().unwrap();
+
+    // insert author
+    db.execute_named("
+      insert into `author` (
+        `name`,
+        `age`,
+        `height`,
+        `handedness`,
+        `home_city`,
+        `social_networks`,
+        `notes`
+      ) values (
+        :name,
+        :age,
+        :height,
+        :handedness,
+        :home_city,
+        :social_networks,
+        :notes
+      )", named_params![
+      ":name":            request.name,
+      ":age":             request.age,
+      ":height":          request.height,
+      ":handedness":      request.handedness,
+      ":home_city":       request.home_city,
+      ":social_networks": request.social_networks,
+      ":notes":           request.notes,
+    ])?;
+    let author_id = db.last_insert_rowid();
+    Ok(author_id)
+  }).await.map_err(|e| e.to_string())?;
+
+  Ok(object!{
+    result: ErrorCode::Success as u32,
+    id: author_id
+  })
+}
+
+///author/edit
+async fn author_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+  #[derive(Serialize, Deserialize)] struct Request {
+    id: u32,
+    name: String,
+    age: Option<u32>,
+    height: Option<u32>,
+    handedness: Option<u8>,
+    home_city: String,
+    social_networks: String,
+    notes: String,
+  };
+  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+
+  if request.name.is_empty() {
+    return Ok(object! {
+      result: ErrorCode::InvalidRequest as u32
+    })
+  }
+
+  web::block(move || -> Result<(), RpcError> {
+    let db = db.get().unwrap();
+
+    // update graffiti
+    db.execute_named("
+      update `author`
+        set `name` = :name,
+            `age` = :age,
+            `height` = :height,
+            `handedness` = :handedness,
+            `home_city` = :home_city,
+            `social_networks` = :social_networks,
+            `notes` = :notes
+        where `id` = :id",
+      named_params![
+        ":id":              request.id,
+        ":name":            request.name,
+        ":age":             request.age,
+        ":height":          request.height,
+        ":handedness":      request.handedness,
+        ":home_city":       request.home_city,
+        ":social_networks": request.social_networks,
+        ":notes":           request.notes,
+    ])?;
+
+    Ok(())
+  }).await.map_err(|e| e.to_string())?;
+
+  Ok(object!{
+    result: ErrorCode::Success as u32
+  })
+}
+
+///author/delete
+async fn author_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+  #[derive(Serialize, Deserialize)] struct Request {
+    id: u32
+  };
+  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+
+  web::block(move || -> Result<(), RpcError> {
+    let db = db.get().unwrap();
+    db.execute("delete from `author` where `id` = :id", params![request.id])?;
     Ok(())
   }).await.map_err(|e| e.to_string())?;
 

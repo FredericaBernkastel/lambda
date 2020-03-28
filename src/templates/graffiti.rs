@@ -9,7 +9,7 @@
     left join `location` b on b.`graffiti_id` = a.`id`
     where a.`id` = :id", params![id], |row| {
       Ok((
-          model::Graffiti {
+        model::Graffiti {
           id: row.get(0)?,
           complaint_id: row.get(1)?,
           datetime: row.get(2)?,
@@ -31,6 +31,12 @@
         }
       ))
     })?;
+
+  // update views, takes 5ms
+  db.execute("
+    update `graffiti`
+      set `views` = `views` + 1
+      where `id` = :id", params![id])?;
 
   let gps = if let (Some(lat), Some(long)) = (location.gps_lat, location.gps_long){
     format!("{}, {}", lat, long)

@@ -1,4 +1,46 @@
 {
+  struct Author {
+    name: String,
+    age: String,
+    height: String,
+    handedness: model::Handedness,
+    home_city: String,
+    social_networks: String,
+    notes: String,
+  }
+
+  let author = 
+    if path == "/author/:id/edit" {
+      let id: u32 = data.get("id").ok_or("")?.parse()?;
+
+      db.query_row("
+        select 
+          `name` as '0', `age` as '1', `height` as '2', `handedness` as '3', `home_city` as '4', `social_networks` as '5', `notes` as '6'
+        from `author`
+        where `id` = :id", params![id], |row| {
+          Ok(Author {
+            name: row.get(0)?,
+            age: row.get::<_, Option<u32>>(1)?.map_or("".into(), |x| x.to_string()),
+            height: row.get::<_, Option<u32>>(2)?.map_or("".into(), |x| x.to_string()),
+            handedness: model::Handedness::from_u8(row.get(3)?).unwrap_or(model::Handedness::RightHanded),
+            home_city: row.get(4)?,
+            social_networks: row.get(5)?,
+            notes: row.get(6)?
+          })
+        }
+      )?
+    } else {
+      Author {
+        name: "".to_string(),
+        age: "".to_string(),
+        height: "".to_string(),
+        handedness: model::Handedness::RightHanded,
+        home_city: "".to_string(),
+        social_networks: "".to_string(),
+        notes: "".to_string(),
+      }
+    };
+
   let mar_image = |src: Option<&str>| {
     let src = match src {
       Some(src) => src,
@@ -40,28 +82,32 @@
             .node116_1.boxed {
               p.box-title { "Information" }
               .descr {
-                .row { .l { "Name: " }        .r { input type="text" {  } } }
-                .row { .l { "Age: " }         .r { input type="number" {  } } }
-                .row { .l { "Height (cm): " } .r { input type="number" {  } } }
-                .row { .l { "Home city: " }   .r { input type="text" {  } } }
+                .row { .l { "Name: " }        .r { input#name type="text" value=(author.name); } }
+                .row { .l { "Age: " }         .r { input#age type="number" value=(author.age); } }
+                .row { .l { "Height (cm): " } .r { input#height type="number" value=(author.height); } }
+                .row { .l { "Home city: " }   .r { input#home_city type="text" value=(author.home_city); } }
                 .row { .l { "Handedness: " }  .r { 
-                  select {
-                    option value="0" { "right handed" }
-                    option value="1" { "left handed" }
-                    option value="2" { "ambidextrous" }
+                  select#handedness {
+                    @for variant in model::Handedness::iter() {
+                      @if author.handedness == variant { 
+                        option value=({variant as u8}) selected="" { (variant.to_string()) }
+                      } @else {
+                        option value=({variant as u8}) { (variant.to_string()) }
+                      }
+                    }
                   }
                 }}
               }
             }
             .node116_2.boxed {
               p.box-title { "Social networks" br; span.small { "(one link per line)" } }
-              textarea rows="4" {  }
+              textarea#social_networks rows="4" { (author.social_networks) }
             }
           }
           .node117 {
             .node117_1.boxed {
               p.box-title { "Notes" }
-              textarea {  }
+              textarea#notes { (author.notes) }
             }
             .node117_2.boxed {
               p.box-title { "Images" }
@@ -75,7 +121,7 @@
                     (mar_image(None))
                   }
                 }
-                input type="file" id="openfiledlg" multiple="multiple" accept=".jpg" {  }
+                input type="file" id="openfiledlg" multiple="multiple" accept=".jpg";
               }
             }
           }

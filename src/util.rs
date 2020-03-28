@@ -36,7 +36,7 @@ pub fn check_cors_hash(hash: &str, config: &Config) -> bool {
 
 pub fn markup_br(text: String) -> Markup {
   html! {
-    @for line in text.split("\n") {
+    @for line in text.lines() {
       (line) br;
     }}
 }

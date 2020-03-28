@@ -1,62 +1,81 @@
 {
   let id: u32 = data.get("id").ok_or("")?.parse()?;
 
+  let author = db.query_row("
+    select `name` as '0', `age` as '1', `height` as '2', `handedness` as '3', `home_city` as '4', `social_networks` as '5', `notes` as '6', `views` as '7'
+    from `author`
+    where `id` = :id", params![id], |row| {
+      Ok(model::Author {
+        id: id,
+        name: row.get(0)?,
+        age: row.get(1)?,
+        height: row.get(2)?,
+        handedness: model::Handedness::from_u8(row.get(3)?),
+        home_city: row.get(4)?,
+        social_networks: row.get(5)?,
+        notes: row.get(6)?,
+        views: row.get(7)?
+      })
+    })?;
+
+  // update views, takes 5ms
+  db.execute("
+    update `author`
+      set `views` = `views` + 1
+      where `id` = :id", params![id])?;
+
   html! {
     (include!("header.rs"))
     
     .page-author {
       .container {
         .actions-wrapper {
-          a href={ (root_url) "views/author/" (id) "/edit" } {
-            span.action-btn#edit {
-              "Modify author"
-              svg {use xlink:href={ (root_url) "static/img/sprite.svg#edit" }{}}
-            }
+          a.action-btn#edit href={ (root_url) "views/author/" (id) "/edit" } {
+            "Modify author"
+            svg {use xlink:href={ (root_url) "static/img/sprite.svg#edit" }{}}
+          }
+          span.action-btn.red#delete {
+            "Delete"
+            svg {use xlink:href={ (root_url) "static/img/sprite.svg#trash-alt" }{}}
           }
         }
         .row1 {
           .node113 {
             .node113_1 {
               a.link-prev href="#" { 
-                svg { title { "Previous ID" } use xlink:href={ (root_url) "static/img/sprite.svg#angle-double-left" }{}}
+                svg { title { "Previous image" } use xlink:href={ (root_url) "static/img/sprite.svg#angle-double-left" }{}}
               }
               .author-image {
                 img;
               }
               a.link-next href="#" { 
-                svg { title { "Next ID" } use xlink:href={ (root_url) "static/img/sprite.svg#angle-double-right" }{}}
+                svg { title { "Next image" } use xlink:href={ (root_url) "static/img/sprite.svg#angle-double-right" }{}}
               }
             }
             .node113_2.boxed {
               p.box-title { "Information" }
               .descr {
-                .row { .l { "Name: " }        .r { "Authorname Surname Lastname" } }
-                .row { .l { "Age: " }         .r { "23" } }
-                .row { .l { "Height: " }      .r { "174cm" } }
-                .row { .l { "Handedness: " }  .r { "right handed" } }
-                .row { .l { "Home city: " }   .r { "Huesca" } }
-                .row { .l { "Graffiti: " }    .r { "1" } }
+                .row { .l { "Name: " }        .r { (author.name) } }
+                .row { .l { "Age: " }         .r { (author.age.map_or("".into(), |x| x.to_string())) } }
+                .row { .l { "Height: " }      .r { (author.height.map_or("".into(), |x| format!("{}cm", x))) } }
+                .row { .l { "Handedness: " }  .r { (author.handedness.map_or("".into(), |x| x.to_string())) } }
+                .row { .l { "Home city: " }   .r { (author.home_city) } }
+                .row { .l { "Graffiti: " }    .r { "0" } } // TODO: (aggregate)
               }
             }
             .node113_3.boxed {
               p.box-title { "Social networks" }
               .descr {
-                a href="#" { "https://instagram.com/username" }
-                a href="#" { "https://facebook.com/user.name" }
+                @for line in author.social_networks.lines() {
+                  a href=(line) target="_blank" { (line) }
+                }
               }
             }
           }
           .node114 {
             .node114_1.boxed {
               p.box-title { "Notes" }
-              .descr {
-                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean felis sem, placerat convallis 
-                 eros quis, mollis venenatis dui. Pellentesque habitant morbi tristique senectus et netus et
-                 malesuada fames ac turpis egestas. Nullam pulvinar ac nisl et eleifend. Aliquam commodo 
-                 tristique mi, nec fringilla massa egestas vel. Morbi orci eros, ultricies id efficitur vel, 
-                 interdum in arcu. Mauris ex dolor, sodales in massa et, tempus cursus urna. Pellentesque 
-                 tristique sem hendrerit pretium dapibus."
-              }
+              .descr { (util::markup_br(author.notes)) }
             }
             .node114_2.boxed {
               p.box-title { "Zones of activity" }

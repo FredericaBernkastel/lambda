@@ -274,4 +274,110 @@ $(function(){
     });
   }
 
+  /* /author/add    
+   * /author/:id/edit                
+   * ##########################################*/
+  if (__path_t === '/author/add' || __path_t === '/author/:id/edit') {
+    var send_mutex = false;
+    var $wrapper = $('.page-author-add');
+
+    var __rpc_fn;
+    switch (__path_t) {
+      case '/author/add':      __rpc_fn = __rpc + 'author/add'; break;
+      case '/author/:id/edit': __rpc_fn = __rpc + 'author/edit'; break;
+    }
+
+    $wrapper.find('.actions-wrapper #save').on('click', function(){
+      if(send_mutex)
+        return;
+
+      var validate = function(){
+        var errors = [];
+        if(!$wrapper.find('#name').val())
+          errors.push('#name');
+        errors.forEach(function(s){
+          $wrapper.find(s).css('border-color', '#ff4d4d');
+        });
+        return !errors.length;
+      }
+
+      if (!validate())
+        return;
+
+      send_mutex = true;
+
+      var data = {
+        'cors_h': __cors_h,
+        'name': $wrapper.find('#name').val(),
+        'age': +$wrapper.find('#age').val(),
+        'height': +$wrapper.find('#height').val(),
+        'handedness': +$wrapper.find('#handedness').val(),
+        'home_city': $wrapper.find('#home_city').val(),
+        'social_networks': $wrapper.find('#social_networks').val(),
+        'notes': $wrapper.find('#notes').val()
+      };
+
+      if (data['age'] === 0) data['age'] = null;
+      if (data['height'] === 0) data['height'] = null;
+
+      if (__path_t === '/author/:id/edit')
+        data['id'] = +__glob.data['id'];
+
+      $.ajax({
+        type: 'POST',
+        url: __rpc_fn,
+        data: JSON.stringify(data),
+        success: function(response){
+          send_mutex = false;
+          var response = JSON.parse(response);
+
+          if (response.result === rpc.Success){
+            var id;
+            if (__path_t === '/author/:id/edit')
+              id = +__glob.data['id'];
+            else
+              id = response.id;
+            window.location = __root_url + 'views/author/' + id;
+          }
+        },
+        error: function(jqXHR, status, error){
+          send_mutex = false;
+        }
+      });
+    })
+  }
+
+  /* /author/:id               
+   * ##########################################*/
+  if (__path_t === '/author/:id') {
+    var send_mutex = false;
+    var $wrapper = $('.page-author');
+
+    $wrapper.find('.actions-wrapper #delete').on('click', function(){
+      display_warning('Delete author?', function(){
+        var send_mutex = true;
+        var data = {
+          'cors_h': __cors_h,
+          'id': +__glob.data['id']
+        };
+
+        $.ajax({
+          type: 'POST',
+          url: __rpc + 'author/delete',
+          data: JSON.stringify(data),
+          success: function(response){
+            send_mutex = false;
+            var response = JSON.parse(response);
+
+            if (response.result === rpc.Success)
+              window.location = __root_url + 'views/authors';
+          },
+          error: function(jqXHR, status, error){
+            send_mutex = false;
+          }
+        });
+      });
+    });
+  }
+
 })

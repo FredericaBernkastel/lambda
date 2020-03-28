@@ -7,6 +7,7 @@ pub struct User {
   pub password: String
 }
 
+#[derive(Debug)]
 pub struct Session {
   pub id: String,
   pub uid: u32,
@@ -44,3 +45,25 @@ pub struct Location {
   pub gps_lat: Option<f64>
 }
 
+#[derive(Display, Debug, Copy, Clone, PartialEq, FromPrimitive, EnumIter)]
+pub enum Handedness {
+  #[strum(serialize="Right handed")]
+  RightHanded = 0,
+  #[strum(serialize="Left handed")]
+  LeftHanded = 1,
+  #[strum(serialize="Ambidextrous")]
+  Ambidextrous = 2,
+}
+
+#[derive(Debug)]
+pub struct Author {
+  pub id: u32,
+  pub name: String,
+  pub age: Option<u32>,
+  pub height: Option<u32>,
+  pub handedness: Option<Handedness>,
+  pub home_city: String,
+  pub social_networks: String,
+  pub notes: String,
+  pub views: u32
+}
