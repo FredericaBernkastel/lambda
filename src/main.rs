@@ -15,6 +15,7 @@ mod templates;
 
 use actix_web::{get, web, guard, App, HttpServer, HttpResponse, Result, middleware, error::BlockingError};
 use actix_session::{CookieSession, Session};
+use futures::StreamExt;
 
 type DB = web::Data<r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>>;
 type DBConn = r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
@@ -35,6 +36,20 @@ async fn get_user(db: DB, session: &Session) -> Option<model::User>{
 fn strip_slashes(mut uri: String) -> String {
   if uri.ends_with('/') { uri.pop(); }
   "/".to_string() + &uri
+}
+
+async fn read_payload(mut payload: web::Payload, config: &config::Config) -> Result<bytes::Bytes, actix_web::Error> {
+  // payload is a stream of Bytes objects
+  let mut post_data = bytes::BytesMut::new();
+  while let Some(chunk) = payload.next().await {
+    let chunk = chunk?;
+    // limit max size of in-memory payload
+    if (post_data.len() + chunk.len()) > config.web.max_request_size as usize {
+      return Err(actix_web::error::ErrorBadRequest("overflow"));
+    }
+    post_data.extend_from_slice(&chunk);
+  }
+  Ok(post_data.freeze())
 }
 
 #[get("/views/{uri:.+}")]
@@ -68,12 +83,14 @@ async fn sv_views(uri: web::Path<String>, db: DB, config: Config, session: Sessi
 }
 
 #[post("/rpc/{uri:.+}")]
-async fn sv_rpc(uri: web::Path<String>, post_data: bytes::Bytes, db: DB, config: Config, session: Session) -> Result<HttpResponse, HttpResponse> {
+async fn sv_rpc(uri: web::Path<String>, payload: web::Payload, db: DB, config: Config, session: Session) -> Result<HttpResponse, HttpResponse> {
   let t0 = std::time::Instant::now();
   let uri = strip_slashes(uri.to_string());
 
   let user = get_user(db.clone(), &session).await;
   if user.is_none() && (uri != "/auth/login") { return Ok(HttpResponse::Unauthorized().finish()); };
+
+  let post_data = read_payload(payload, config.get_ref()).await?;
 
   let res = rpc::main(uri, post_data, db, config.get_ref(), user, session)
     .await

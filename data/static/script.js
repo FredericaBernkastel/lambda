@@ -6,6 +6,33 @@ $(function(){
       __rpc       = __glob.rpc,
       __cors_h    = __glob.cors_h;
 
+  class Mutex {
+    constructor(onGet, onRelease){
+      this.value = false;
+      this.onGet = onGet;
+      this.onRelease = onRelease;
+    }
+
+    get(){
+      if(this.value) return false; 
+      this.value = true;
+      if(typeof this.onGet === 'function') this.onGet(); 
+      return true;
+    }
+    release(){
+      if(!this.value) return false; 
+      this.value = false;
+      if(typeof this.onRelease === 'function') this.onRelease(); 
+      return true;
+    }
+  }
+
+  const rpc = {
+    Success:        0,
+    InternalError:  100,
+    InvalidLogin:   101,
+    InvalidRequest: 102
+  };
 
   //====================== popups
   function display_error(message){
@@ -38,15 +65,154 @@ $(function(){
     popup.css('display', 'flex');
     return popup;
   }
+
+  //====================== images upload
+  function image_upload_ctr($wrapper) {
+
+    var mutex = new Mutex();
+
+    // images iface controller
+    var image_controls = function(self){
+      function check_class(self){
+        return self.hasClass('image') && !self.hasClass('processing') && !self.hasClass('add');
+      }
+      if(!check_class(self))
+        return;
+
+      self.find('.controls .sh .shl').on('click', function(){
+        var prev = self.prev();
+        if(prev.length)
+          if(check_class(prev))
+            self.insertBefore(prev);
+      });
+      self.find('.controls .sh .shr').on('click', function(){
+        var next = self.next();
+        if(next.length)
+          if(check_class(next))
+            self.insertAfter(next);
+      });
+      self.find('.controls .del').on('click', function(){
+        self.remove();
+      });
+    }
+
+    $wrapper.children('.image:not(.processing):not(.add)').each(function(i){
+      image_controls($(this));
+    });
+
+    $wrapper.find('.image.add').on('click', function(){
+      if(mutex.value)
+        return;
+      $wrapper.find('input#openfiledlg').trigger('click');
+    });
+
+    $wrapper.find('input#openfiledlg').on('change', function(evt){
+      var files = evt.target.files; // FileList object
+      if(files.length === 0)
+        return;
+
+      var self = this;
+
+      mutex.get();
+
+      // check file size
+      for(var i = 0, f; f = files[i]; i++)
+        if(f.size > 1024 * 1024){
+          display_error('Maximum file size exceeded (1MB)');
+          mutex.release();
+          return
+        }
+
+      for (var i = 0, f; f = files[i]; i++)
+        if (!(f.type === 'image/jpeg')){
+          display_error('Unsupported image type');
+          mutex.release();
+          return;
+        }
+
+
+      var eventCounter = 0;
+      var eventResults = [];
+
+      // Loop through the FileList
+      for (var i = 0, f; f = files[i]; i++) {
+        var reader = new FileReader();
+        reader.onload = (function(i) {
+          return function(e) {
+            eventCounter++;
+            eventResults[i] = e.target.result;
+            if(eventCounter === files.length) promise_all();
+          };
+        })(i);
+        reader.onerror = function() { display_error('Unable to read file.'); mutex.release(); self.value = ''; };
+
+        reader.readAsDataURL(f);
+      }
+
+      var promise_all = function(){
+
+        self.value = '';
+
+        // add thumbnails
+        eventResults.forEach(function(file, i, array){
+          var $tpl = $($wrapper.find('.image.add *[data-type="x-template"]').attr('data'));
+          $tpl.find('img').get(0).src = file;
+          $tpl
+            .addClass('processing')
+            .insertBefore($wrapper.children('.image.add'));
+          array[i] = {ref: $tpl, data: array[i]};
+        });
+
+        // recursive upload sequence
+        function upload(i){
+         $.ajax({
+            type: 'POST',
+            url: __rpc + 'store_image',
+            data: JSON.stringify({
+              'cors_h': __cors_h,
+              'data': eventResults[i].data
+            }),
+
+            success: function(data){
+              function _finally(){
+                mutex.release();
+                $wrapper.find('.image.processing').remove();
+              };
+              var data = JSON.parse(data);
+              switch(data.result){
+                case rpc.InvalidRequest:
+                case rpc.InternalError: {
+                  display_error('Image upload failed (server error)');
+                  _finally();
+                  break;
+                };
+                case rpc.Success: {
+                  eventResults[i].ref
+                    .attr('data-id', data['temp_id'])
+                    .removeClass('processing');
+                  image_controls(eventResults[i].ref);
+
+                  if(i < eventResults.length - 1)
+                    upload(i + 1);
+                  else
+                    mutex.release();
+                  break;
+                }
+              }
+            },
+            error: function(jqXHR, status, error){
+              display_error('error: network failure');
+            }
+          });
+        }
+        upload(0);
+      }
+    });
+  }
   
   $('a[href="#"]').on('click', function(e){
     e.preventDefault();
   });
-
-  const rpc = {
-    Success:      0,
-    InvalidLogin: 101
-  };
 
   /* any page
    * ##########################################*/
@@ -164,6 +330,8 @@ $(function(){
       case '/graffiti/:id/edit': __rpc_fn = __rpc + 'graffiti/edit'; break;
     }
 
+    image_upload_ctr($wrapper.find('.img_upload_wrp'));
+
     $wrapper.find('.actions-wrapper #save').on('click', function(){
       if(send_mutex)
         return;
@@ -216,6 +384,13 @@ $(function(){
 
       if (__path_t === '/graffiti/:id/edit')
         data['graffiti']['id'] = +__glob.data['id'];
+
+      data['images'] = [];
+        $wrapper.find('.img_upload_wrp > .image:not(.processing):not(.add)').each(function(){
+          var id = $(this).attr('data-id');
+          if(id)
+            data['images'].push(id);
+        });
 
       $.ajax({
         type: 'POST',

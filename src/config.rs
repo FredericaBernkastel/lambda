@@ -16,6 +16,7 @@ pub struct ServerConfig {
 pub struct WebConfig {
   pub root_url: String,
   pub secret_key: String,
+  pub max_request_size: u32
 }
 
 pub fn load() -> Config {

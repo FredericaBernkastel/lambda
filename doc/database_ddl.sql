@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.1.1 on Sat Mar 28 17:06:40 2020
+-- File generated with SQLiteStudio v3.1.1 on Sun Mar 29 03:05:51 2020
 --
 -- Text encoding used: System
 --
@@ -43,6 +43,15 @@ CREATE TABLE graffiti (
 );
 
 
+-- Table: graffiti_image
+CREATE TABLE graffiti_image (
+    graffiti_id INTEGER   REFERENCES graffiti (id) 
+                          NOT NULL,
+    hash        CHAR (64) NOT NULL,
+    [order]     INTEGER   NOT NULL
+);
+
+
 -- Table: location
 CREATE TABLE location (
     graffiti_id INTEGER REFERENCES graffiti (id) 
@@ -73,6 +82,13 @@ CREATE TABLE sessions (
 );
 
 
+-- Table: tmp_store_image
+CREATE TABLE tmp_store_image (
+    id        CHAR (64) NOT NULL,
+    timestamp INTEGER   NOT NULL
+);
+
+
 -- Table: users
 CREATE TABLE users (
     id       INTEGER       PRIMARY KEY AUTOINCREMENT
@@ -80,6 +96,12 @@ CREATE TABLE users (
     login    VARCHAR (255) NOT NULL
                            UNIQUE,
     password CHAR (64)     NOT NULL
+);
+
+
+-- Index: graffiti_image_graffiti_id
+CREATE INDEX graffiti_image_graffiti_id ON graffiti_image (
+    graffiti_id
 );
 
 
