@@ -67,7 +67,7 @@ $(function(){
   }
 
   //====================== images upload
-  function image_upload_ctr($wrapper) {
+  function image_upload_ctr(__rpc_fn, $wrapper) {
 
     var mutex = new Mutex();
 
@@ -167,7 +167,7 @@ $(function(){
         function upload(i){
          $.ajax({
             type: 'POST',
-            url: __rpc + 'store_image',
+            url: __rpc + __rpc_fn,
             data: JSON.stringify({
               'cors_h': __cors_h,
               'data': eventResults[i].data
@@ -330,7 +330,7 @@ $(function(){
       case '/graffiti/:id/edit': __rpc_fn = __rpc + 'graffiti/edit'; break;
     }
 
-    image_upload_ctr($wrapper.find('.img_upload_wrp'));
+    image_upload_ctr('graffiti/store_image', $wrapper.find('.img_upload_wrp'));
 
     $wrapper.find('.actions-wrapper #save').on('click', function(){
       if(send_mutex)
@@ -462,6 +462,8 @@ $(function(){
       case '/author/:id/edit': __rpc_fn = __rpc + 'author/edit'; break;
     }
 
+    image_upload_ctr('author/store_image', $wrapper.find('.img_upload_wrp'));
+
     $wrapper.find('.actions-wrapper #save').on('click', function(){
       if(send_mutex)
         return;
@@ -497,6 +499,13 @@ $(function(){
 
       if (__path_t === '/author/:id/edit')
         data['id'] = +__glob.data['id'];
+
+      data['images'] = [];
+        $wrapper.find('.img_upload_wrp > .image:not(.processing):not(.add)').each(function(){
+          var id = $(this).attr('data-id');
+          if(id)
+            data['images'].push(id);
+        });
 
       $.ajax({
         type: 'POST',

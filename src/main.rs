@@ -5,6 +5,7 @@
 #[macro_use] extern crate actix_web;
 #[macro_use] extern crate json;
 #[macro_use] extern crate num_derive;
+#[macro_use] extern crate runtime_fmt;
 mod model;
 mod config;
 mod auth;

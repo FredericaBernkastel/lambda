@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.1.1 on Sun Mar 29 03:05:51 2020
+-- File generated with SQLiteStudio v3.1.1 on Tue Mar 31 00:50:22 2020
 --
 -- Text encoding used: System
 --
@@ -21,6 +21,15 @@ CREATE TABLE author (
                             DEFAULT (''),
     views           INTEGER NOT NULL
                             DEFAULT (0) 
+);
+
+
+-- Table: author_image
+CREATE TABLE author_image (
+    author_id INTEGER   REFERENCES author (id) 
+                        NOT NULL,
+    hash      CHAR (64) NOT NULL,
+    [order]   INTEGER   NOT NULL
 );
 
 
@@ -96,6 +105,12 @@ CREATE TABLE users (
     login    VARCHAR (255) NOT NULL
                            UNIQUE,
     password CHAR (64)     NOT NULL
+);
+
+
+-- Index: author_image_author_id
+CREATE INDEX author_image_author_id ON author_image (
+    author_id
 );
 
 

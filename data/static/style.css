@@ -218,10 +218,9 @@ select { padding: 2px 0; }
 
 .img_upload_wrp { display: flex; flex-wrap: wrap; max-width: calc((120px + 10px) * 5); }
   .img_upload_wrp .image { width: 120px; height: 120px; position: relative; margin: 0 10px 10px 0; display: flex; user-select: none; }
-  .img_upload_wrp .image::after { content: ''; width: 100%; height: 100%; display: block; position: absolute; top: 0;box-shadow: inset 0px 0px 20px 3px #0000009e, inset 0px 0px 0px 2px #0000009e;border-radius: 2px; }
+  .img_upload_wrp .image::after { content: ''; width: 100%; height: 100%; display: block; position: absolute; top: 0;box-shadow: inset 0px 0px 0px 1px #dbdbdb; border-radius: 2px; }
     .img_upload_wrp .image img { max-width: 100%; max-height: 100%; margin: auto; display: block; }
   .img_upload_wrp .image.add { color: #b5b5b5; cursor: pointer; }
-  .img_upload_wrp .image.add::after { box-shadow: inset 0px 0px 0px 2px currentColor; }
   .img_upload_wrp .image.add:hover { color: #898989; }
     .img_upload_wrp .image.add svg { max-width: 75%; max-height: 75%; margin: auto; }
   .img_upload_wrp input#openfiledlg { display: none; }
@@ -293,7 +292,7 @@ select { padding: 2px 0; }
           .page-author .row1 .node115_2 .items > * .img { width: 100px; height: 75px; display: block; background: #000; }
 
 .page-author-add {  }
-  .page-author-add .row1 { display: flex; align-items: flex-start; }
+  .page-author-add .row1 { display: flex; align-items: flex-start; margin-bottom: 15px; }
     .page-author-add .row1 .node116 { display: flex; flex-direction: column; flex-basis: 348px; margin-right: 15px; }
       .page-author-add .row1 .node116_1 { margin-bottom: 15px; }
         .page-author-add .row1 .node116_1 .descr > .row { display: flex; justify-content: space-between; }
@@ -304,7 +303,7 @@ select { padding: 2px 0; }
     .page-author-add .row1 .node117 { display: flex; flex-direction: column; align-items: flex-start; flex-basis: 684px; }
       .page-author-add .row1 .node117_1 { margin-bottom: 15px; }
         .page-author-add .row1 .node117_1 textarea { min-height: 150px; min-width: 300px; width: 652px; }
-      .page-author-add .row1 .node117_2 {  }
+      .page-author-add .row1 .node117_2 { width: 100%; }
 
 .page-tags {  }
   .page-tags .node118 { margin-bottom: 15px; }

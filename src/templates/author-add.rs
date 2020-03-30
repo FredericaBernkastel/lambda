@@ -9,60 +9,50 @@
     notes: String,
   }
 
-  let author = 
+  let (author, images) = 
+
     if path == "/author/:id/edit" {
       let id: u32 = data.get("id").ok_or("")?.parse()?;
-
-      db.query_row("
-        select 
-          `name` as '0', `age` as '1', `height` as '2', `handedness` as '3', `home_city` as '4', `social_networks` as '5', `notes` as '6'
-        from `author`
-        where `id` = :id", params![id], |row| {
-          Ok(Author {
-            name: row.get(0)?,
-            age: row.get::<_, Option<u32>>(1)?.map_or("".into(), |x| x.to_string()),
-            height: row.get::<_, Option<u32>>(2)?.map_or("".into(), |x| x.to_string()),
-            handedness: model::Handedness::from_u8(row.get(3)?).unwrap_or(model::Handedness::RightHanded),
-            home_city: row.get(4)?,
-            social_networks: row.get(5)?,
-            notes: row.get(6)?
-          })
-        }
-      )?
-    } else {
-      Author {
-        name: "".to_string(),
-        age: "".to_string(),
-        height: "".to_string(),
-        handedness: model::Handedness::RightHanded,
-        home_city: "".to_string(),
-        social_networks: "".to_string(),
-        notes: "".to_string(),
-      }
-    };
-
-  let mar_image = |src: Option<&str>| {
-    let src = match src {
-      Some(src) => src,
-      None => "{src}"
-    };
-
-    html! {
-      .image {
-        img src=(src) {  }
-        .controls {
-          .sh {
-            .shl { svg { title { "move left" }  use xlink:href={ (root_url) "static/img/sprite.svg#angle-left" }{}} }
-            .shr { svg { title { "move right" } use xlink:href={ (root_url) "static/img/sprite.svg#angle-right" }{}} }
+      (
+        db.query_row("
+          select 
+            `name` as '0', `age` as '1', `height` as '2', `handedness` as '3', `home_city` as '4', `social_networks` as '5', `notes` as '6'
+          from `author`
+          where `id` = :id", params![id], |row| {
+            Ok(Author {
+              name: row.get(0)?,
+              age: row.get::<_, Option<u32>>(1)?.map_or("".into(), |x| x.to_string()),
+              height: row.get::<_, Option<u32>>(2)?.map_or("".into(), |x| x.to_string()),
+              handedness: model::Handedness::from_u8(row.get(3)?).unwrap_or(model::Handedness::RightHanded),
+              home_city: row.get(4)?,
+              social_networks: row.get(5)?,
+              notes: row.get(6)?
+            })
           }
-          .del { svg { title { "delete" } use xlink:href={ (root_url) "static/img/sprite.svg#times-circle" }{}} }
-        }
-        .processing_overlay {
-          svg { title { "uploading" } use xlink:href={ (root_url) "static/img/sprite.svg#spinner" }{}}
-        }
-      }
-    }
-  };
+        )?,
+
+        db.prepare("
+          select `hash` from `author_image`
+          where `author_id` = :id
+          order by `order` asc")?
+          .query_map(params![id], |row| {
+            Ok(row.get::<_, String>(0)?)
+          })?.filter_map(Result::ok).collect()
+      )
+    } else {
+      (
+        Author {
+          name: "".to_string(),
+          age: "".to_string(),
+          height: "".to_string(),
+          handedness: model::Handedness::RightHanded,
+          home_city: "".to_string(),
+          social_networks: "".to_string(),
+          notes: "".to_string(),
+        },
+        vec![]
+      )
+    };
 
   html! {
     (include!("header.rs"))
@@ -112,14 +102,12 @@
             .node117_2.boxed {
               p.box-title { "Images" }
               .img_upload_wrp {
-                @for _ in 1..=4 {
-                  (mar_image(None))
+                @for image in images.iter(){
+                  (mar_image(Some(image), "{}static/img/author/{}/{}_p1.jpg", config))
                 }
                 .image.add title="Upload images" {
                   svg {use xlink:href={ (root_url) "static/img/box-add.svg#box-add" }{}}
-                  div data-type="x-template" {
-                    (mar_image(None))
-                  }
+                  div data-type="x-template" data=(mar_image(None, "", config).into_string()) { }
                 }
                 input type="file" id="openfiledlg" multiple="multiple" accept=".jpg";
               }

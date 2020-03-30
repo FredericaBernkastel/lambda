@@ -89,29 +89,6 @@
       )
     };
 
-  let mar_image = |hash: Option<&str>| {
-    let src = match hash {
-      Some(hash) => format!("{}static/img/graffiti/{}/{}_p1.jpg", root_url, hash.get(0..=1).unwrap_or(""), hash),
-      None => "{src}".into()
-    };
-
-    html! {
-      .image data-id=(hash.unwrap_or("")) {
-        img src=(src) {  }
-        .controls {
-          .sh {
-            .shl { svg { title { "move left" }  use xlink:href={ (root_url) "static/img/sprite.svg#angle-left" }{}} }
-            .shr { svg { title { "move right" } use xlink:href={ (root_url) "static/img/sprite.svg#angle-right" }{}} }
-          }
-          .del { svg { title { "delete" } use xlink:href={ (root_url) "static/img/sprite.svg#times-circle" }{}} }
-        }
-        .processing_overlay {
-          svg { title { "uploading" } use xlink:href={ (root_url) "static/img/sprite.svg#spinner" }{}}
-        }
-      }
-    }
-  };
-
   html! {
     (include!("header.rs"))
     
@@ -180,11 +157,11 @@
             p.box-title { "Images" }
             .img_upload_wrp {
               @for image in images.iter(){
-                (mar_image(Some(image)))
+                (mar_image(Some(image), "{}static/img/graffiti/{}/{}_p1.jpg", config))
               }
               .image.add title="Upload images" {
                 svg {use xlink:href={ (root_url) "static/img/box-add.svg#box-add" }{}}
-                div data-type="x-template" data=(mar_image(None).into_string()) { }
+                div data-type="x-template" data=(mar_image(None, "", config).into_string()) { }
               }
               input type="file" id="openfiledlg" multiple="multiple" accept=".jpg";
             }

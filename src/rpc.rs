@@ -22,6 +22,7 @@ pub enum RpcError {
   InvalidLogin,
   InvalidRequest
 }
+
 impl From<rusqlite::Error> for RpcError {
   fn from(error: rusqlite::Error) -> Self {
     return RpcError::InternalError { d: error.to_string() };
@@ -41,6 +42,18 @@ impl From<&str> for RpcError {
   }}
 impl From<image::error::ImageError> for RpcError {
   fn from(error: image::error::ImageError) -> Self {
+    return RpcError::InternalError { d: error.to_string() };
+  }}
+impl From<std::str::Utf8Error> for RpcError {
+  fn from(error: std::str::Utf8Error) -> Self {
+    return RpcError::InternalError { d: error.to_string() };
+  }}
+impl From<json::Error> for RpcError {
+  fn from(error: json::Error) -> Self {
+    return RpcError::InternalError { d: error.to_string() };
+  }}
+impl From<base64::DecodeError> for RpcError {
+  fn from(error: base64::DecodeError) -> Self {
     return RpcError::InternalError { d: error.to_string() };
   }}
 
@@ -63,10 +76,11 @@ pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: 
         "/graffiti/add",
         "/graffiti/edit",
         "/graffiti/delete",
+        "/graffiti/store_image",
         "/author/add",
         "/author/edit",
         "/author/delete",
-        "/store_image",
+        "/author/store_image",
       ] { tmp.insert(path, path); };
       tmp
     };
@@ -89,10 +103,11 @@ pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: 
           "/graffiti/add" => graffiti_add(post_data, db).await?,
           "/graffiti/edit" => graffiti_edit(post_data, db).await?,
           "/graffiti/delete" => graffiti_delete(post_data, db).await?,
+          "/graffiti/store_image" => store_image(post_data, db, vec![(480, 360), (100, 75)]).await,
           "/author/add" => author_add(post_data, db).await?,
           "/author/edit" => author_edit(post_data, db).await?,
           "/author/delete" => author_delete(post_data, db).await?,
-          "/store_image" => store_image(post_data, db).await?,
+          "/author/store_image" => store_image(post_data, db, vec![(170, 226), (56, 75)]).await,
           _ => unreachable!()
         }
       }
@@ -456,6 +471,7 @@ async fn author_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error
     home_city: String,
     social_networks: String,
     notes: String,
+    images: Vec<String>
   };
   let request: Request = serde_json::from_slice(post_data.as_ref())?;
 
@@ -496,6 +512,25 @@ async fn author_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error
       ":notes":           request.notes,
     ])?;
     let author_id = db.last_insert_rowid();
+
+    images_ctr(
+      "data/static/img/author",
+      vec![],
+      request.images,
+      &db,
+      "delete from `author_image` where `author_id` = :id",
+      "insert into `author_image` (
+        `author_id`,
+        `hash`,
+        `order`
+      ) values (
+        :id,
+        :hash,
+        :order
+      )",
+      author_id as u32
+    )?;
+
     Ok(author_id)
   }).await.map_err(|e| e.to_string())?;
 
@@ -516,6 +551,7 @@ async fn author_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Erro
     home_city: String,
     social_networks: String,
     notes: String,
+    images: Vec<String>
   };
   let request: Request = serde_json::from_slice(post_data.as_ref())?;
 
@@ -550,6 +586,32 @@ async fn author_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Erro
         ":notes":           request.notes,
     ])?;
 
+    let old_images = db.prepare("
+      select `hash` from `author_image`
+      where `author_id` = :id
+      order by `order` asc")?
+    .query_map(params![request.id], |row| {
+      Ok(row.get::<_, String>(0)?)
+    })?.filter_map(Result::ok).collect();
+
+    images_ctr(
+      "data/static/img/author",
+      old_images,
+      request.images,
+      &db,
+      "delete from `author_image` where `author_id` = :id",
+      "insert into `author_image` (
+        `author_id`,
+        `hash`,
+        `order`
+      ) values (
+        :id,
+        :hash,
+        :order
+      )",
+      request.id
+    )?;
+
     Ok(())
   }).await.map_err(|e| e.to_string())?;
 
@@ -567,6 +629,22 @@ async fn author_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
 
   web::block(move || -> Result<(), RpcError> {
     let db = db.get().unwrap();
+    // remove images
+    {
+      let images_folder = "data/static/img/author";
+      let mut stmt = db.prepare(
+        "select `hash` from `author_image` where `author_id` = :author_id")?;
+      let images = stmt.query_map(params![request.id], |row| {
+        Ok(row.get::<_, String>(0)?)
+      })?.filter_map(Result::ok);
+      for image in images {
+        for p in vec![0, 1, 2].iter(){
+          let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
+          std::fs::remove_file(path).ok();
+        }
+      }
+    }
+    db.execute("delete from `author_image` where `author_id` = :id", params![request.id])?;
     db.execute("delete from `author` where `id` = :id", params![request.id])?;
     Ok(())
   }).await.map_err(|e| e.to_string())?;
@@ -576,60 +654,62 @@ async fn author_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
   })
 }
 
-async fn store_image(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+///store_image
+async fn store_image(post_data: Bytes, db: DB, sizes: Vec<(u32, u32)>) -> JsonValue {
   use image::{ImageFormat, imageops::FilterType};
 
-  let post_data = json::parse(std::str::from_utf8(&post_data)?)?;
-  let err = Ok(object!{
-    result: ErrorCode::InvalidRequest as u32
-  });
-  let image = {
-    let image_b64 =
-      if let Some(data) = post_data["data"].as_str() { data } else { return err };
-    if image_b64.get(0..=22) != Some("data:image/jpeg;base64,") { return err; }
-    image::load_from_memory_with_format(
-      base64::decode(
-        if let Some(data) = image_b64.get(23..) { data } else { return err }
-      )?.as_slice(),
-      ImageFormat::Jpeg
-    )?
-  };
+  web::block( move || -> Result<JsonValue, RpcError> {
+    let db = db.get().unwrap();
 
-  let temp_id = auth::gen_ssid();
+    let post_data = json::parse(std::str::from_utf8(&post_data)?)?;
+    let image = {
+      let image_b64 = post_data["data"].as_str().ok_or(RpcError::InvalidRequest)?;
+      if image_b64.get(0..=22) != Some("data:image/jpeg;base64,") { return Err(RpcError::InvalidRequest); }
+      image::load_from_memory_with_format(
+        base64::decode( image_b64.get(23..).ok_or(RpcError::InvalidRequest)?)?.as_slice(),
+        ImageFormat::Jpeg
+      )?
+    };
 
-  web::block({
-    let temp_id = temp_id.clone();
-    move || -> Result<(), RpcError> {
-      let db = db.get().unwrap();
-      // p0
-      image.save(format!("data/tmp/{}_p0.jpg", temp_id))?;
-      // generate p1 (480x360)
-      image.resize(480, 360, FilterType::Lanczos3).save(format!("data/tmp/{}_p1.jpg", temp_id))?;
-      // generate p2 (100x75)
-      image.resize(100, 75, FilterType::Lanczos3).save(format!("data/tmp/{}_p2.jpg", temp_id))?;
-      db.execute("
-        insert into `tmp_store_image`
-          (`id`, `timestamp`)
-          values(:id, :timestamp)", params![temp_id, util::get_timestamp() as i64])?;
-      //garbage collector
-      {
-        let expired = util::get_timestamp() - 86400; // 1 day
-        let mut stmt = db.prepare("select `id` from `tmp_store_image` where `timestamp` < :timestamp")?;
-        let images = stmt.query_map(params![expired as i64], |row| {
-          Ok(row.get::<_, String>(0)?)
-        })?.filter_map(Result::ok);
-        for image in images {
-          for p in vec![0, 1, 2].iter() {
-            std::fs::remove_file(format!("data/tmp/{}_p{}.jpg", image, p))?;
-          }
+    let temp_id = auth::gen_ssid();
+
+    // p0
+    image.save(format!("data/tmp/{}_p0.jpg", temp_id))?;
+
+    // generate thumbnails
+    for (i, size) in sizes.iter().enumerate() {
+      image
+        .resize(size.0, size.1, FilterType::Lanczos3)
+        .save(format!("data/tmp/{}_p{}.jpg", temp_id, i + 1))?;
+    }
+
+    db.execute("
+      insert into `tmp_store_image`
+        (`id`, `timestamp`)
+        values(:id, :timestamp)", params![temp_id, util::get_timestamp() as i64])?;
+    //garbage collector
+    {
+      let expired = util::get_timestamp() - 86400; // 1 day
+      let mut stmt = db.prepare("select `id` from `tmp_store_image` where `timestamp` < :timestamp")?;
+      let images = stmt.query_map(params![expired as i64], |row| {
+        Ok(row.get::<_, String>(0)?)
+      })?.filter_map(Result::ok);
+      for image in images {
+        for p in vec![0, 1, 2].iter() {
+          std::fs::remove_file(format!("data/tmp/{}_p{}.jpg", image, p))?;
         }
-        db.execute("delete from `tmp_store_image` where `timestamp` < :timestamp", params![expired as i64])?;
       }
-      Ok(())
-  }}).await.map_err(|e| e.to_string())?;
-
-  Ok(object!{
-    result: ErrorCode::Success as u32,
-    temp_id: temp_id
-  })
+      db.execute("delete from `tmp_store_image` where `timestamp` < :timestamp", params![expired as i64])?;
+    }
+    Ok(object!{
+      result: ErrorCode::Success as u32,
+      temp_id: temp_id
+    })
+  }).await
+    .unwrap_or_else(|e| {
+      eprintln!("{:?}", e);
+      object! {
+        result: ErrorCode::InternalError as u32
+      }
+    })
 }

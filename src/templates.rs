@@ -113,3 +113,27 @@ fn navigation(config: &Config) -> Markup {
     }
   }
 }
+
+fn mar_image(hash: Option<&str>, path_template: &str, config: &Config) -> Markup {
+  let root_url = &config.web.root_url;
+  let src = match hash {
+    Some(hash) => rt_format!(path_template, root_url, hash.get(0..=1).unwrap_or(""), hash).unwrap_or("".into()),
+    None => "{src}".into()
+  };
+
+  html! {
+    .image data-id=(hash.unwrap_or("")) {
+      img src=(src) {  }
+      .controls {
+        .sh {
+          .shl { svg { title { "move left" }  use xlink:href={ (root_url) "static/img/sprite.svg#angle-left" }{}} }
+          .shr { svg { title { "move right" } use xlink:href={ (root_url) "static/img/sprite.svg#angle-right" }{}} }
+        }
+        .del { svg { title { "delete" } use xlink:href={ (root_url) "static/img/sprite.svg#times-circle" }{}} }
+      }
+      .processing_overlay {
+        svg { title { "uploading" } use xlink:href={ (root_url) "static/img/sprite.svg#spinner" }{}}
+      }
+    }
+  }
+}
