@@ -209,6 +209,54 @@ $(function(){
       }
     });
   }
+
+  //====================== image presentation controller
+  function image_presentation($wrapper, img_folder) {
+    var $img = $wrapper.children('img');
+    var $link_prev = $wrapper.parents(1).find('.link-prev');
+    var $link_next = $wrapper.parents(1).find('.link-next');
+    var link_state = function(i, length){
+      var ret;
+      if (i === 0 && length > 1)
+        ret = [false, true];
+      else if (i > 0 && i < length - 1)
+        ret = [true, true];
+      else if (i > 0 && i === length - 1)
+        ret = [true, false];
+      else
+        ret = [false, false];
+      $link_prev.css('visibility', ret[0] ? 'visible' : 'hidden');
+      $link_next.css('visibility', ret[1] ? 'visible' : 'hidden');
+    };
+    if ($wrapper.children('.images').length) {
+      var images = JSON.parse($wrapper.children('.images').html());
+      link_state(0, images.length);
+
+      var set_src = function(i) {
+        var hash = images[i];
+        var path = __root_url + 'static/img/' + img_folder + '/' + hash[0] + hash[1] + '/' + hash + '_p1.jpg';
+        $img.attr('src', path);
+        $img.attr('data-id', i);
+        link_state(i, images.length);
+      }
+
+      $link_prev.on('click', function(){
+        set_src(+$img.attr('data-id') - 1);
+      });
+      $link_next.on('click', function(){
+        set_src(+$img.attr('data-id') + 1);
+      });
+
+      $img.on('click', function(){
+        var self = $(this);
+        var src = self.attr('src').replace(/_p1\.jpg$/, '_p0.jpg');
+        if (src)
+          $.fancybox.open({
+            src: src
+          });
+      })
+    }
+  }
   
   $('a[href="#"]').on('click', function(e){
     e.preventDefault();
@@ -422,6 +470,8 @@ $(function(){
     var send_mutex = false;
     var $wrapper = $('.page-graffiti');
 
+    image_presentation($wrapper.find('.graffiti-image'), 'graffiti');
+
     $wrapper.find('.actions-wrapper #delete').on('click', function(){
       display_warning('Delete graffiti?', function(){
         var send_mutex = true;
@@ -536,6 +586,8 @@ $(function(){
   if (__path_t === '/author/:id') {
     var send_mutex = false;
     var $wrapper = $('.page-author');
+
+    image_presentation($wrapper.find('.author-image'), 'author');
 
     $wrapper.find('.actions-wrapper #delete').on('click', function(){
       display_warning('Delete author?', function(){

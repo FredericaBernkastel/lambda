@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.1.1 on Tue Mar 31 00:50:22 2020
+-- File generated with SQLiteStudio v3.1.1 on Wed Apr 1 01:06:50 2020
 --
 -- Text encoding used: System
 --
@@ -7,128 +7,144 @@ PRAGMA foreign_keys = off;
 BEGIN TRANSACTION;
 
 -- Table: author
-CREATE TABLE author (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    name            TEXT    NOT NULL,
-    age             INTEGER,
-    height          INTEGER,
-    handedness      INTEGER,
-    home_city       TEXT    NOT NULL
-                            DEFAULT (''),
-    social_networks TEXT    NOT NULL
-                            DEFAULT (''),
-    notes           TEXT    NOT NULL
-                            DEFAULT (''),
-    views           INTEGER NOT NULL
-                            DEFAULT (0) 
+create table author (
+  id              INTEGER primary key autoincrement,
+  name            TEXT    not null,
+  age             INTEGER,
+  height          INTEGER,
+  handedness      INTEGER,
+  home_city       TEXT    not null
+                          default (''),
+  social_networks TEXT    not null
+                          default (''),
+  notes           TEXT    not null
+                          default (''),
+  views           INTEGER not null
+                          default (0) 
 );
 
 
 -- Table: author_image
-CREATE TABLE author_image (
-    author_id INTEGER   REFERENCES author (id) 
-                        NOT NULL,
-    hash      CHAR (64) NOT NULL,
-    [order]   INTEGER   NOT NULL
+create table author_image (
+  author_id INTEGER   references author (id) 
+                      not null,
+  hash      CHAR (64) not null,
+  `order`   INTEGER   not null
 );
 
 
 -- Table: graffiti
-CREATE TABLE graffiti (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT
-                         NOT NULL,
-    complaint_id TEXT    NOT NULL
-                         DEFAULT (''),
-    datetime     INTEGER,
-    shift_time   INTEGER,
-    intervening  TEXT    NOT NULL
-                         DEFAULT (''),
-    companions   INTEGER NOT NULL
-                         DEFAULT (0),
-    notes        TEXT    NOT NULL
-                         DEFAULT (''),
-    views        INTEGER NOT NULL
-                         DEFAULT (0) 
+create table graffiti (
+  id           INTEGER primary key autoincrement
+                       not null,
+  complaint_id TEXT    not null
+                       default (''),
+  datetime     INTEGER,
+  shift_time   INTEGER,
+  intervening  TEXT    not null
+                       default (''),
+  companions   INTEGER not null
+                       default (0),
+  notes        TEXT    not null
+                       default (''),
+  views        INTEGER not null
+                       default (0) 
 );
 
 
 -- Table: graffiti_image
-CREATE TABLE graffiti_image (
-    graffiti_id INTEGER   REFERENCES graffiti (id) 
-                          NOT NULL,
-    hash        CHAR (64) NOT NULL,
-    [order]     INTEGER   NOT NULL
+create table graffiti_image (
+  graffiti_id INTEGER   references graffiti (id) 
+                        not null,
+  hash        CHAR (64) not null,
+  `order`     INTEGER   not null
 );
 
 
 -- Table: location
-CREATE TABLE location (
-    graffiti_id INTEGER REFERENCES graffiti (id) 
-                        NOT NULL
-                        UNIQUE,
-    country     TEXT    NOT NULL
-                        DEFAULT (''),
-    city        TEXT    NOT NULL
-                        DEFAULT (''),
-    street      TEXT    NOT NULL
-                        DEFAULT (''),
-    place       TEXT    NOT NULL
-                        DEFAULT (''),
-    property    TEXT    NOT NULL
-                        DEFAULT (''),
-    gps_long    REAL,
-    gps_lat     REAL
+create table location (
+  graffiti_id INTEGER references graffiti (id) 
+                      not null
+                      unique,
+  country     TEXT    not null
+                      default (''),
+  city        TEXT    not null
+                      default (''),
+  street      TEXT    not null
+                      default (''),
+  place       TEXT    not null
+                      default (''),
+  property    TEXT    not null
+                      default (''),
+  gps_long    REAL,
+  gps_lat     REAL
 );
 
 
 -- Table: sessions
-CREATE TABLE sessions (
-    id      CHAR (64) PRIMARY KEY
-                      NOT NULL,
-    uid     INTEGER   REFERENCES users (id) 
-                      NOT NULL,
-    expires INTEGER   NOT NULL
+create table sessions (
+  id      CHAR (64) primary key
+                    not null,
+  uid     INTEGER   references users (id) 
+                    not null,
+  expires INTEGER   not null
 );
 
 
 -- Table: tmp_store_image
-CREATE TABLE tmp_store_image (
-    id        CHAR (64) NOT NULL,
-    timestamp INTEGER   NOT NULL
+create table tmp_store_image (
+  id        CHAR (64) not null,
+  timestamp INTEGER   not null
 );
 
 
 -- Table: users
-CREATE TABLE users (
-    id       INTEGER       PRIMARY KEY AUTOINCREMENT
-                           NOT NULL,
-    login    VARCHAR (255) NOT NULL
-                           UNIQUE,
-    password CHAR (64)     NOT NULL
+create table users (
+  id       INTEGER       primary key autoincrement
+                         not null,
+  login    VARCHAR (255) not null
+                         unique,
+  password CHAR (64)     not null
 );
 
 
 -- Index: author_image_author_id
-CREATE INDEX author_image_author_id ON author_image (
-    author_id
+create index author_image_author_id on author_image (
+  author_id
 );
+
+
+-- Index: author_image_thumbnail
+create unique index author_image_thumbnail on author_image (
+  author_id,
+  "order"
+)
+where `order` = 0;
 
 
 -- Index: graffiti_image_graffiti_id
-CREATE INDEX graffiti_image_graffiti_id ON graffiti_image (
-    graffiti_id
+create index graffiti_image_graffiti_id on graffiti_image (
+  graffiti_id
 );
 
 
+-- Index: graffiti_image_thumbnail
+create unique index graffiti_image_thumbnail on graffiti_image (
+  graffiti_id,
+  "order"
+)
+where `order` = 0;
+
+
 -- Index: location_graffiti_id
-CREATE INDEX location_graffiti_id ON location (
-    graffiti_id
+create index location_graffiti_id on location (
+  graffiti_id
 );
 
 
 -- Index: users_login
-CREATE INDEX users_login ON users (
-    login
+create index users_login on users (
+  login
 );
 
 

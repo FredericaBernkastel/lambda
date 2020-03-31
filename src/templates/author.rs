@@ -2,9 +2,16 @@
   let id: u32 = data.get("id").ok_or("")?.parse()?;
 
   let author = db.query_row("
-    select `name` as '0', `age` as '1', `height` as '2', `handedness` as '3', `home_city` as '4', `social_networks` as '5', `notes` as '6', `views` as '7'
-    from `author`
-    where `id` = :id", params![id], |row| {
+    select name as `0`,
+           age as `1`,
+           height as `2`,
+           handedness as `3`,
+           home_city as `4`,
+           social_networks as `5`,
+           notes as `6`,
+           views as `7`
+      from author
+     where id = :id", params![id], |row| {
       Ok(model::Author {
         id: id,
         name: row.get(0)?,
@@ -17,6 +24,15 @@
         views: row.get(7)?
       })
     })?;
+
+  let images: Vec<String> = db.prepare("
+    select hash
+      from author_image
+     where author_id = :id
+     order by `order` asc;
+    ")?.query_map(params![id], |row| {
+      Ok(row.get(0)?)
+    })?.filter_map(Result::ok).collect();
 
   // update views, takes 5ms
   db.execute("
@@ -46,7 +62,14 @@
                 svg { title { "Previous image" } use xlink:href={ (root_url) "static/img/sprite.svg#angle-double-left" }{}}
               }
               .author-image {
-                img;
+                @if let Some(image) = images.get(0) {
+                  img data-id="0" src=(format!("{}static/img/author/{}/{}_p1.jpg", root_url, image.get(0..=1).unwrap_or(""), image));
+                  .images data-type="x-template" {
+                    (json::stringify(images))
+                  }
+                } @else {
+                  .no-image {  }
+                }
               }
               a.link-next href="#" { 
                 svg { title { "Next image" } use xlink:href={ (root_url) "static/img/sprite.svg#angle-double-right" }{}}

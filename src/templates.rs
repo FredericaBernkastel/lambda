@@ -70,6 +70,7 @@ pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> 
         meta http-equiv="Content-Type" content="text/html; charset=utf-8";
         meta name="viewport" content="width=device-width";
 
+        link rel="stylesheet" href={ (root_url) "static/vendors.css" } type="text/css" media="screen";
         link rel="stylesheet" href={ (root_url) "static/style.css" } type="text/css" media="screen";
         script type="text/javascript" src={ (root_url) "static/vendors.js" } {  }
         script type="text/javascript" src={ (root_url) "static/script.js" } {  }

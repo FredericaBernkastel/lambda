@@ -32,6 +32,15 @@
       ))
     })?;
 
+  let images: Vec<String> = db.prepare("
+    select hash
+      from graffiti_image
+     where graffiti_id = :id
+     order by `order` asc;
+    ")?.query_map(params![id], |row| {
+      Ok(row.get(0)?)
+    })?.filter_map(Result::ok).collect();
+
   // update views, takes 5ms
   db.execute("
     update `graffiti`
@@ -74,7 +83,14 @@
           }
           .node102 {
             .graffiti-image {
-              img;
+              @if let Some(image) = images.get(0) {
+                img data-id="0" src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", root_url, image.get(0..=1).unwrap_or(""), image));
+                .images data-type="x-template" {
+                  (json::stringify(images))
+                }
+              } @else {
+                .no-image {  }
+              }
             }
             .tags {
               a href="#" { "vandalism" }
