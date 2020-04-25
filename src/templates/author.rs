@@ -82,6 +82,36 @@
       })
   }).optional()?;
 
+  let aggregate_counties: Vec<(String, u32)> = db.prepare("
+    select b.country,
+           count(b.country) as count 
+      from graffiti_author a
+           inner join location b on b.graffiti_id = a.graffiti_id
+     where author_id = :id
+     group by lower(b.country)
+     order by count desc, b.country asc
+    ")?.query_map(params![id], |row| {
+      Ok((
+        row.get(0)?,
+        row.get(1)?,
+      ))
+    })?.filter_map(Result::ok).collect();
+
+  let aggregate_cities: Vec<(String, u32)> = db.prepare("
+    select b.city,
+           count(b.city) as count
+      from graffiti_author a
+           inner join location b on b.graffiti_id = a.graffiti_id
+     where author_id = :id
+     group by lower(b.city)
+     order by count desc, b.city asc
+    ")?.query_map(params![id], |row| {
+      Ok((
+        row.get(0)?,
+        row.get(1)?,
+      ))
+    })?.filter_map(Result::ok).collect();
+
   // update views, takes 5ms
   db.execute("
     update `author`
@@ -151,8 +181,16 @@
             .node114_2.boxed {
               p.box-title { "Zones of activity" }
               .descr {
-                .row { .l { "Countries: " } .r { "Spain(34), Portugal(3)" } }
-                .row { .l { "Cities: " }    .r { "Zamora(21), Valladolid(7), León(6), Lisboa(3)" } }
+                .row { .l { "Countries: " } .r {
+                  @for (country, count) in aggregate_counties.iter() {
+                    (format!("{} ({}), ", country, count))
+                  }
+                } }
+                .row { .l { "Cities: " } .r { 
+                  @for (city, count) in aggregate_cities.iter() {
+                    (format!("{} ({}), ", city, count))
+                  }
+                } }
               }
             }
             .node114_3 {
