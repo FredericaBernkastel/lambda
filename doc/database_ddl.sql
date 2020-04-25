@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.1.1 on Wed Apr 1 01:06:50 2020
+-- File generated with SQLiteStudio v3.2.1 on Sat Apr 25 15:26:55 2020
 --
 -- Text encoding used: System
 --
@@ -49,6 +49,17 @@ create table graffiti (
                        default (''),
   views        INTEGER not null
                        default (0) 
+);
+
+
+-- Table: graffiti_author
+create table graffiti_author (
+  graffiti_id INTEGER references graffiti (id) 
+                      not null,
+  author_id   INTEGER references author (id) 
+                      not null,
+  indubitable BOOLEAN not null
+                      default (0) 
 );
 
 
@@ -120,6 +131,18 @@ create unique index author_image_thumbnail on author_image (
   "order"
 )
 where `order` = 0;
+
+
+-- Index: graffiti_author_author_id
+create index graffiti_author_author_id on graffiti_author (
+  author_id
+);
+
+
+-- Index: graffiti_author_graffiti_id
+create index graffiti_author_graffiti_id on graffiti_author (
+  graffiti_id
+);
 
 
 -- Index: graffiti_image_graffiti_id

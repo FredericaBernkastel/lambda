@@ -41,6 +41,27 @@
       Ok(row.get(0)?)
     })?.filter_map(Result::ok).collect();
 
+
+  struct Author {
+    id: u32,
+    indubitable: bool,
+    name: String
+  }
+  let authors: Vec<Author> = db.prepare("
+    select a.author_id,
+           a.indubitable,
+           b.name
+      from graffiti_author a
+           inner join author b on a.author_id = b.id
+     where graffiti_id = :id")?
+    .query_map(params![id], |row| {
+      Ok(Author { 
+        id: row.get(0)?,
+        indubitable: row.get(1)?,
+        name: row.get(2)?,
+      })
+    })?.filter_map(Result::ok).collect();
+
   // update views, takes 5ms
   db.execute("
     update `graffiti`
@@ -104,11 +125,16 @@
           .node101.boxed {
             p.box-title { "Author(s)" }
             .items {
-              .item { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 1" } }
-              .item.checked { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 2" } }
-              .item { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 3" } }
-              .item.checked { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 4" } }
-              .item { svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} a href={ (root_url) "views/author/1" } { "Author Name 5" } }
+              @for author in authors {
+                @let classname = 
+                  format!("item {}", if author.indubitable { "checked" } else { "" });
+                .(classname) { 
+                  svg { title { "checked" } use xlink:href={ (root_url) "static/img/sprite.svg#check" }{}} 
+                  a href={ (root_url) "views/author/" (author.id) } { 
+                    (author.name) 
+                  } 
+                }
+              }
             }
           }
         }

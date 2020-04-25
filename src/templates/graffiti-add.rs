@@ -19,7 +19,13 @@
     gps: String,
   }
 
-  let ((graffiti, location), images) =
+  struct Author {
+    id: u32,
+    indubitable: bool,
+    name: String
+  }
+
+  let ((graffiti, location), images, authors) =
 
     if path == "/graffiti/:id/edit" {
       let id: u32 = data.get("id").ok_or("")?.parse()?;
@@ -33,6 +39,8 @@
           left join `location` b on b.`graffiti_id` = a.`id`
           where a.`id` = :id", params![id], |row| {
           Ok((
+
+            // graffiti
             Graffiti {
               id: id.to_string(),
               complaint_id: row.get(0)?,
@@ -42,6 +50,8 @@
               intervening: row.get(3)?,
               notes: row.get(4)?,
             },
+
+            // location
             Location {
               country: row.get(5)?,
               city: row.get(6)?,
@@ -55,18 +65,37 @@
           ))
         })?,
 
+        // images
         db.prepare("
-          select `hash` from `graffiti_image`
-          where `graffiti_id` = :id
-          order by `order` asc")?
+          select hash
+            from graffiti_image
+           where graffiti_id = :id
+           order by `order` asc")?
           .query_map(params![id], |row| {
             Ok(row.get::<_, String>(0)?)
+          })?.filter_map(Result::ok).collect(),
+
+        // authors
+        db.prepare("
+          select a.author_id,
+                 a.indubitable,
+                 b.name
+            from graffiti_author a
+                 inner join author b on a.author_id = b.id
+           where graffiti_id = :id")?
+          .query_map(params![id], |row| {
+            Ok(Author { 
+              id: row.get(0)?,
+              indubitable: row.get(1)?,
+              name: row.get(2)?,
+            })
           })?.filter_map(Result::ok).collect()
       )
 
     } else {
       (
         (
+          // graffiti
           Graffiti {
             id: "#".to_string(),
             complaint_id: "".to_string(),
@@ -76,6 +105,8 @@
             intervening: "".to_string(),
             notes: "".to_string()
           },
+
+          // location
           Location {
             country: "".to_string(),
             city: "".to_string(),
@@ -85,9 +116,42 @@
             gps: "".to_string(),
           }
         ),
+
+        // images
+        vec![],
+
+        // authors
         vec![]
       )
     };
+
+  let mar_author_row = |author: Option<Author>| {
+    html! {
+      .row { 
+        .l {
+          svg.delete {use xlink:href={ (root_url) "static/img/sprite.svg#times" }{}}
+          @if let Some(author) = &author {
+            input type="text" readonly="" autocomplete="off" value=(author.name) data-id=(author.id); 
+          } @else {
+            input type="text" readonly="" autocomplete="off"; 
+          }
+        } 
+        .r {
+          @let checked = 
+            {
+              if let Some(author) = author {
+                author.indubitable
+              } else { false }
+            };
+          @if checked {
+            input type="checkbox" checked=""; 
+          } @else {
+            input type="checkbox"; 
+          }
+        } 
+      }
+    }
+  };
 
   html! {
     (include!("header.rs"))
@@ -131,10 +195,15 @@
           .node108.boxed {
             p.box-title { "Author(s)" }
             .items { 
-              .row.title { .l { "Author(s)" } .r { "Indubitable" } }
-              @for _ in 1..7 {
-                .row { .l { input type="text" {  } } .r { input type="checkbox"; } }
+              .row.title { 
+                .l { "Author(s)" } 
+                .r { "Indubitable" } 
               }
+              @for author in authors {
+                (mar_author_row(Some(author)))
+              }
+              (mar_author_row(None))
+              div data-type="x-template" data=((mar_author_row(None)).into_string()) { }
             }
           }
           .node109.boxed {

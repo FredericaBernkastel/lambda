@@ -37,7 +37,7 @@ futures = "*"
 base64 = "0.12.0"
 image = { version = "0.23.2", default-features = false, features = ["jpeg"] }
 regex = "*"
-runtime-fmt = "0.4.1"
+runtime-fmt = {git = "https://github.com/ludios/runtime-fmt"}
 
 [profile.release]
 lto = true

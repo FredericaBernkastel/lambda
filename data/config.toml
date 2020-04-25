@@ -1,5 +1,5 @@
 [server]
-bind_addr = "127.0.0.1:8080" # <ip>:<port> or unix://sock
+bind_addr = "127.0.0.1:8080" # <ip>:<port> or unix:/sock
 db_path = "data/main.db"
 
 [web]

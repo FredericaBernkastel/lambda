@@ -81,6 +81,7 @@ pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: 
         "/author/edit",
         "/author/delete",
         "/author/store_image",
+        "/search/author_names"
       ] { tmp.insert(path, path); };
       tmp
     };
@@ -108,6 +109,7 @@ pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: 
           "/author/edit" => author_edit(post_data, db).await?,
           "/author/delete" => author_delete(post_data, db).await?,
           "/author/store_image" => store_image(post_data, db, vec![(170, 226), (56, 75)]).await,
+          "/search/author_names" => search_author_names(post_data, db).await?,
           _ => unreachable!()
         }
       }
@@ -225,12 +227,19 @@ async fn graffiti_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Err
     gps_long: Option<f64>,
     gps_lat: Option<f64>
   };
+  #[derive(Serialize, Deserialize)] struct Author {
+    id: u32,
+    indubitable: bool
+  }
   #[derive(Serialize, Deserialize)] struct Request {
     graffiti: Graffiti,
     location: Location,
+    authors: Vec<Author>,
     images: Vec<String>
   };
-  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let mut request: Request = serde_json::from_slice(post_data.as_ref())?;
+  request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
+  request.authors.dedup_by(|a, b| a.id == b.id);
 
   let graffiti_id = web::block(move || -> Result<i64, RpcError> {
     let db = db.get().unwrap();
@@ -292,6 +301,28 @@ async fn graffiti_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Err
       ":gps_lat": request.location.gps_lat,
     ])?;
 
+    // insert graffiti_author
+    {
+      let mut stmt = db.prepare("
+        insert into graffiti_author (
+          graffiti_id,
+          author_id,
+          indubitable
+        )
+        values (
+          :graffiti_id,
+          :author_id,
+          :indubitable
+        )")?;
+      for author in request.authors.iter() {
+        stmt.execute_named(named_params![
+          ":graffiti_id": graffiti_id,
+          ":author_id": author.id,
+          ":indubitable": author.indubitable,
+        ])?;
+      }
+    }
+
     images_ctr(
       "data/static/img/graffiti",
       vec![],
@@ -339,12 +370,19 @@ async fn graffiti_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
     gps_long: Option<f64>,
     gps_lat: Option<f64>
   };
+  #[derive(Serialize, Deserialize)] struct Author {
+    id: u32,
+    indubitable: bool
+  }
   #[derive(Serialize, Deserialize)] struct Request {
     graffiti: Graffiti,
     location: Location,
+    authors: Vec<Author>,
     images: Vec<String>
   };
-  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let mut request: Request = serde_json::from_slice(post_data.as_ref())?;
+  request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
+  request.authors.dedup_by(|a, b| a.id == b.id);
 
   web::block(move || -> Result<(), RpcError> {
     let db = db.get().unwrap();
@@ -390,6 +428,29 @@ async fn graffiti_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
         ":gps_long": request.location.gps_long,
         ":gps_lat": request.location.gps_lat,
     ])?;
+
+    // update graffiti_author
+    {
+      db.execute("delete from `graffiti_author` where `graffiti_id` = :id", params![request.graffiti.id])?;
+      let mut stmt = db.prepare("
+        insert into graffiti_author (
+          graffiti_id,
+          author_id,
+          indubitable
+        )
+        values (
+          :graffiti_id,
+          :author_id,
+          :indubitable
+        )")?;
+      for author in request.authors.iter() {
+        stmt.execute_named(named_params![
+          ":graffiti_id": request.graffiti.id,
+          ":author_id": author.id,
+          ":indubitable": author.indubitable,
+        ])?;
+      }
+    }
 
     let old_images = db.prepare("
         select `hash` from `graffiti_image`
@@ -452,6 +513,7 @@ async fn graffiti_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn 
 
     db.execute("delete from `location` where `graffiti_id` = :id", params![request.id])?;
     db.execute("delete from `graffiti_image` where `graffiti_id` = :id", params![request.id])?;
+    db.execute("delete from `graffiti_author` where `graffiti_id` = :id", params![request.id])?;
     db.execute("delete from `graffiti` where `id` = :id", params![request.id])?;
     Ok(())
   }).await.map_err(|e| e.to_string())?;
@@ -645,6 +707,7 @@ async fn author_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
       }
     }
     db.execute("delete from `author_image` where `author_id` = :id", params![request.id])?;
+    db.execute("delete from `graffiti_author` where `author_id` = :id", params![request.id])?;
     db.execute("delete from `author` where `id` = :id", params![request.id])?;
     Ok(())
   }).await.map_err(|e| e.to_string())?;
@@ -712,4 +775,40 @@ async fn store_image(post_data: Bytes, db: DB, sizes: Vec<(u32, u32)>) -> JsonVa
         result: ErrorCode::InternalError as u32
       }
     })
+}
+
+///search/author_names
+async fn search_author_names(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+  #[derive(Deserialize)] struct Request {
+    term: String
+  };
+  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+  struct Row {
+    id: u32,
+    name: String
+  };
+  let names = web::block(move || -> Result<Vec<Row>, RpcError> {
+    let db = db.get().unwrap();
+    let mut stmt = db.prepare("
+      select id,
+             name
+        from author
+       where name like :term
+       limit 10")?;
+    let term = format!("%{}%", request.term);
+    let names: Vec<Row> = stmt.query_map(params![term], |row| {
+      Ok(Row {
+        id: row.get(0)?,
+        name: row.get(1)?,
+      })
+    })?.filter_map(Result::ok).collect();
+    Ok(names)
+  }).await.map_err(|e| e.to_string())?;
+  let names: Vec<JsonValue> = names.iter().map(|x| object! {
+    id: x.id,
+    name: x.name.clone()
+  }).collect();
+  Ok(object! {
+    result: names
+  })
 }

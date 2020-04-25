@@ -16,13 +16,17 @@ html! {
             "It is possible to check or add entries as well as search for them in the Graffiti and
              Authors menu via the pertinent buttons and submenus."
           }
-          img src={ (root_url) "static/img/help1.png" };
+          a data-fancybox="" href={ (root_url) "static/img/help1.png" } {
+            img src={ (root_url) "static/img/help1.png" };
+          }
         }
         div {
           p {
             "Modification of existing entries is also possible inside the entry's page."
           }
-          img src={ (root_url) "static/img/help2.png" };
+          a data-fancybox="" href={ (root_url) "static/img/help2.png" } {
+            img src={ (root_url) "static/img/help2.png" };
+          }
         }
         div {
           p {
@@ -30,7 +34,9 @@ html! {
              these tags come to use in the graffiti, where they can be added or deleted at will and
              will help with the search and organization of them."
           }
-          img src={ (root_url) "static/img/help3.png" };
+          a data-fancybox="" href={ (root_url) "static/img/help3.png" } {
+            img src={ (root_url) "static/img/help3.png" };
+          }
         }
       }
       .row3 {

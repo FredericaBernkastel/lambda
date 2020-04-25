@@ -1,4 +1,5 @@
 #![feature(proc_macro_hygiene)]
+#![feature(str_strip)]
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate clap;
 #[macro_use] extern crate rusqlite;
@@ -119,7 +120,7 @@ async fn main() -> std::io::Result<()> {
 
   cli::load(&config, &db_pool);
 
-  HttpServer::new({
+  let server = HttpServer::new({
     let config = config.clone();
     move || {
       App::new()
@@ -143,8 +144,16 @@ async fn main() -> std::io::Result<()> {
                 .to(HttpResponse::MethodNotAllowed),
             ),
         )
-  }})
-    .bind(&config.server.bind_addr)?
-    .run()
-    .await
+  }});
+  if config.server.bind_addr.starts_with("unix:/"){
+    #[cfg(target_os = "linux")] {
+      server.bind_uds(config.server.bind_addr.strip_prefix("unix:").unwrap())?
+        .run().await
+    }
+    #[cfg(not(target_os = "linux"))]
+      panic!("Unix sockets are not available for this target");
+  } else {
+    server.bind(config.server.bind_addr)?
+      .run().await
+  }
 }

@@ -55,10 +55,10 @@ p { margin: 0; }
 img, svg { max-width: 100%; max-height: 100%; }
 input[type="text"],
 input[type="number"],
-select, textarea { width: 100%; }
+select, textarea { width: 100%; font: 13px/1 Consolas, monaco, monospace; border: solid 1px #dbdbdb; padding: 3px 2px; }
 input[type="checkbox"] { margin: 0; }
 [data-type="x-template"] { display: none; }
-select { padding: 2px 0; }
+select { padding: 1px 0; }
 
 .si-error { display: none; color: #ff4d4d; font-size: 14px; text-align: center; }
 .fa-spinner { -webkit-animation: rotate 2s infinite linear; animation: rotate 2s infinite linear; }
@@ -67,6 +67,12 @@ select { padding: 2px 0; }
   from { transform: rotate(0deg); }
   to { transform: rotate(359deg); }
 }
+
+.select2-container { font-size: 13px; line-height: 1; }
+  .select2-dropdown,
+  .select2-container--default .select2-selection--single { border-radius: 0; }
+
+.no-image { width: 100%; height: 100%; background: url(img/no-image.svg) 50% no-repeat; background-size: cover; }
 
 .container { width: 1200px; margin: 0 auto; }
 
@@ -129,7 +135,7 @@ select { padding: 2px 0; }
   .page-home .node103 { margin-bottom: 15px; }
     .page-home .node103 .images { display: flex; flex-wrap: wrap; justify-content: space-evenly; margin-bottom: -15px; }
       .page-home .node103 .images > * { flex-basis: calc(100% / 4 - 10px); display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 30px; }
-        .page-home .node103 .images > * .image { width: 130px; height: 97px; background: #000; }
+        .page-home .node103 .images > * .image { width: 130px; height: 98px; display: flex; align-items: center; justify-content: center; }
           .page-home .node103 .images > * .image img {  }
         .page-home .node103 .images > * .title {  }
   .page-home .node104 { margin-bottom: 15px; }
@@ -150,7 +156,6 @@ select { padding: 2px 0; }
     .page-graffitis .table .row > .col4 { flex-basis: 140px; }
     .page-graffitis .table .row > .col5 { flex-basis: 100px; }
       .page-graffitis .table .graffiti-img { width: 100px; height: 75px; display: flex; align-items: center; justify-content: center; }
-        .page-graffitis .table .graffiti-img .no-image { width: 100%; height: 100%; background-color: #000; }
     .page-graffitis .table .row.head > * { justify-content: center; }
   .page-graffitis .navigation { margin-bottom: 30px; }
 
@@ -169,7 +174,6 @@ select { padding: 2px 0; }
     .page-graffiti .row1 .node102 {  }  
       .page-graffiti .row1 .node102 .graffiti-image { width: 480px; height: 360px; display: flex; align-items: center; justify-content: center; }
         .page-graffiti .row1 .node102 .graffiti-image img { cursor: zoom-in; }
-        .page-graffiti .row1 .node102 .graffiti-image .no-image { width: 100%; height: 100%; background-color: #000; }
       .page-graffiti .row1 .node102 .tags { margin-top: 20px; }
         .page-graffiti .row1 .node102 .tags > * { background-color: #f0f2f5; margin: 0 10px 10px 0; padding: 3px 8px; border-radius: 3px; color: #566d96; font-weight: 500; font-size: 13px; }
     .page-graffiti .row1 .node101 { flex-basis: 255px; margin-left: auto; }
@@ -202,8 +206,10 @@ select { padding: 2px 0; }
       .page-graffiti-add .row1 > .node108 .items .row { display: flex; justify-content: space-between; align-items: center; }
       .page-graffiti-add .row1 > .node108 .items .row + .row { margin-top: 8px; }
       .page-graffiti-add .row1 > .node108 .items .row.title { font-size: 12px; color: #8e8e8e; }
-        .page-graffiti-add .row1 > .node108 .items .row .l { flex-grow: 1; }
+        .page-graffiti-add .row1 > .node108 .items .row .l { flex-grow: 1; display: flex; align-items: center; }
+          .page-graffiti-add .row1 > .node108 .items .row .l > .delete { width: 18px; height: 18px; margin-right: 8px; color: #3d94c0; cursor: pointer; }
         .page-graffiti-add .row1 > .node108 .items .row .r { margin-left: 8px; }
+      .page-graffiti-add .row1 > .node108 .items > .select2 { position: absolute; }
     .page-graffiti-add .row1 > .node109 { margin: 0 15px; flex-basis: 255px; }
       .page-graffiti-add .row1 > .node109 > textarea { min-height: 140px; max-width: 540px; min-width: 223px; }
     .page-graffiti-add .row1 > .node110 { flex-grow: 1; }
@@ -256,7 +262,6 @@ select { padding: 2px 0; }
     .page-authors .table .row > .col6 { flex-basis: 190px; }
     .page-authors .table .row > .col7 { flex-basis: 100px; }
       .page-authors .table .graffiti-img { width: 56px; height: 75px; display: flex; align-items: center; justify-content: center; }
-        .page-authors .table .graffiti-img .no-image { width: 100%; height: 100%; background-color: #000; }
     .page-authors .table .row.head > * { justify-content: center; }
   .page-authors .navigation { margin-bottom: 30px; }
 
@@ -270,7 +275,6 @@ select { padding: 2px 0; }
           .page-author .row1 .node113_1 .link-next svg { width: 50px; height: 80px; color: #888; }
         .page-author .row1 .node113_1 .author-image { width: 170px; height: 226px; margin: 0 20px; display: flex; align-items: center; justify-content: center; }
           .page-author .row1 .node113_1 .author-image img { cursor: zoom-in; }
-          .page-author .row1 .node113_1 .author-image .no-image { width: 100%; height: 100%; background-color: #000; }
       .page-author .row1 .node113_2 { margin-bottom: 15px; min-width: 310px; }
         .page-author .row1 .node113_2 .descr > .row { display: flex; justify-content: space-between; }
         .page-author .row1 .node113_2 .descr > .row + .row { margin-top: 8px; }
@@ -295,7 +299,7 @@ select { padding: 2px 0; }
       .page-author .row1 .node115_2 .items { display: flex; }
         .page-author .row1 .node115_2 .items > * + * { margin-left: 15px; }
           .page-author .row1 .node115_2 .items > * p { text-align: center; margin-bottom: 5px; }
-          .page-author .row1 .node115_2 .items > * .img { width: 100px; height: 75px; display: block; background: #000; }
+          .page-author .row1 .node115_2 .items > * .img { width: 100px; height: 75px; display: flex; align-items: center;}
 
 .page-author-add {  }
   .page-author-add .row1 { display: flex; align-items: flex-start; margin-bottom: 15px; }

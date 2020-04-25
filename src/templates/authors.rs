@@ -15,10 +15,13 @@
            a.age as `2`,
            a.home_city as `3`,
            a.views as `4`,
-           b.hash as `5`
+           b.hash as `5`,
+           count(c.author_id) as `6` 
       from author a
            left join author_image b on b.author_id = a.id and 
                                        b.`order` = 0
+           left join graffiti_author c on c.author_id = a.id
+     group by a.id
      order by a.id desc
      limit 0, 20"
   )?;
@@ -27,10 +30,10 @@
       id: row.get(0)?,
       name: row.get(1)?,
       age: row.get(2)?,
-      graffiti: 0, // TODO: (aggregate)
       home_city: row.get(3)?,
       views: row.get(4)?,
-      thumbnail: row.get(5)?
+      thumbnail: row.get(5)?,
+      graffiti: row.get(6)?,
     })
   })?.filter_map(Result::ok);
 

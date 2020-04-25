@@ -213,8 +213,8 @@ $(function(){
   //====================== image presentation controller
   function image_presentation($wrapper, img_folder) {
     var $img = $wrapper.children('img');
-    var $link_prev = $wrapper.parents(1).find('.link-prev');
-    var $link_next = $wrapper.parents(1).find('.link-next');
+    var $link_prev = $($wrapper.parents()[1]).find('.link-prev');
+    var $link_next = $($wrapper.parents()[1]).find('.link-next');
     var link_state = function(i, length){
       var ret;
       if (i === 0 && length > 1)
@@ -409,6 +409,18 @@ $(function(){
         return { lat: data[0], long: data[1] };
       }();
 
+      var authors = function(){
+        var result = [];
+        $wrapper.find('.node108 .row input[data-id]').map(function(i, x){
+          var self = $(x);
+          result.push({
+            id: +self.attr('data-id'),
+            indubitable: $(self.parents()[1]).find('input[type="checkbox"]').prop('checked')
+          })
+        });
+        return result;
+      }();
+
       var data = {
         'cors_h': __cors_h,
         'graffiti': {
@@ -427,7 +439,8 @@ $(function(){
           'property': $wrapper.find('#property').val(),
           'gps_long': gps.long,
           'gps_lat': gps.lat
-        }
+        },
+        'authors': authors
       }
 
       if (__path_t === '/graffiti/:id/edit')
@@ -461,7 +474,92 @@ $(function(){
           send_mutex = false;
         }
       });
-    })
+    });
+
+    //====================== author input controller
+    var author_focus_ctx = function() {
+      var self = $(this);
+      var select = $('<select />');
+      {
+        $(self.parents()[1]).after(select);
+
+        select.select2({
+          ajax: {
+            type: 'POST',
+            url: __rpc + 'search/author_names',
+            data: function (params) {
+              var query = JSON.stringify({
+                'cors_h': __cors_h,
+                'term': params.term
+              });
+              return query;
+            },
+            processResults: function (data) {
+              return {
+                results: JSON.parse(data).result.map(function(x, i){
+                  return {
+                    'id': x.id,
+                    'text': x.name
+                  }
+                })
+              };
+            }
+          },
+          minimumInputLength: 3
+        });
+
+        select.val(self.attr('data-id'));
+        select.select2('open');
+        select.on('select2:close', function(){
+          var data = select.select2('data');
+          select.select2('destroy');
+          select.remove();
+          if (data.length) {
+            self.val(data[0].text);
+            self.attr('data-id', data[0].id);
+            self.trigger('input');
+          }
+        })
+      }
+    };
+    var author_input_ctx = function() {
+      var self = $(this);
+      var next = $(self.parents()[1]).next();
+      var value = self.val();
+      var is_last = next.is('[data-type="x-template"]');
+
+      if (value === '' && !is_last) {
+        $(self.parents()[1]).remove();
+        //next.find('input[type="text"]').focus();
+      }
+
+      if (value !== '' && is_last){
+        var tpl = $(
+            $(self.parents()[2])
+              .find('[data-type="x-template"]')
+              .attr('data')
+          );
+        tpl.find('input[type="text"]')
+          .on('focus', author_focus_ctx)
+          .on('input', author_input_ctx)
+          .siblings('.delete')
+          .on('click', author_clear_ctx);
+        $(self.parents()[1]).after(tpl);
+      }
+    };
+    var author_clear_ctx = function() {
+      var self = $(this);
+      self
+        .siblings('input[type="text"]')
+        .val('')
+        .trigger('input');
+    };
+    $wrapper.find('.node108 .row input[type="text"]')
+      .on('focus', author_focus_ctx)
+      .on('input', author_input_ctx)
+      .siblings('.delete')
+      .on('click', author_clear_ctx);
+
   }
 
   /* /graffiti/:id               

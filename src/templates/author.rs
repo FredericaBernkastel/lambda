@@ -1,4 +1,6 @@
 {
+  use rusqlite::OptionalExtension;
+
   let id: u32 = data.get("id").ok_or("")?.parse()?;
 
   let author = db.query_row("
@@ -33,6 +35,52 @@
     ")?.query_map(params![id], |row| {
       Ok(row.get(0)?)
     })?.filter_map(Result::ok).collect();
+
+  let graffiti_count: u32 = db.query_row("
+    select count( * ) 
+    from graffiti_author
+   where author_id = :id", params![id], |row| {
+      Ok(row.get(0)?)
+   })?;
+
+  struct GraffitiImg {
+    id: u32,
+    thumbnail: Option<String>
+  }
+
+  let graffiti_recent = db.query_row("
+    select a.graffiti_id,
+           c.hash
+      from graffiti_author a
+           inner join graffiti b on b.id = a.graffiti_id
+           left join graffiti_image c on c.graffiti_id = b.id and 
+                                         c.`order` = 0
+     where a.author_id = :id
+     order by a.graffiti_id desc
+     limit 1
+    ", params![id], |row| {
+      Ok(GraffitiImg { 
+        id: row.get(0)?,
+        thumbnail: row.get(1)?
+      })
+  }).optional()?;
+
+  let graffiti_most_viewed = db.query_row("
+    select a.graffiti_id,
+           c.hash
+      from graffiti_author a
+           inner join graffiti b on b.id = a.graffiti_id
+           left join graffiti_image c on c.graffiti_id = b.id and 
+                                         c.`order` = 0
+     where a.author_id = :id
+     order by b.views desc
+     limit 1
+    ", params![id], |row| {
+      Ok(GraffitiImg { 
+        id: row.get(0)?,
+        thumbnail: row.get(1)?
+      })
+  }).optional()?;
 
   // update views, takes 5ms
   db.execute("
@@ -83,7 +131,7 @@
                 .row { .l { "Height: " }      .r { (author.height.map_or("".into(), |x| format!("{}cm", x))) } }
                 .row { .l { "Handedness: " }  .r { (author.handedness.map_or("".into(), |x| x.to_string())) } }
                 .row { .l { "Home city: " }   .r { (author.home_city) } }
-                .row { .l { "Graffiti: " }    .r { "0" } } // TODO: (aggregate)
+                .row { .l { "Graffiti: " }    .r { (graffiti_count)} }
               }
             }
             .node113_3.boxed {
@@ -128,11 +176,31 @@
               .items {
                 .item {
                   p { "most recent" }
-                  a.img href={ (root_url) "views/graffiti/1" } { img; }
+                  @if let Some(graffiti) = graffiti_recent {
+                    a.img href={ (root_url) "views/graffiti/" (graffiti.id) } {
+                      @if let Some(image) = graffiti.thumbnail {
+                        img src=(format!("{}static/img/graffiti/{}/{}_p2.jpg", root_url, image.get(0..=1).unwrap_or(""), image));
+                      } @else {
+                        .no-image {  }
+                      }
+                    }
+                  } @else {
+                    a.img href="#" { .no-image {  } }
+                  }
                 }
                 .item {
                   p { "most viewed" }
-                  a.img href={ (root_url) "views/graffiti/1" } { img; }
+                  @if let Some(graffiti) = graffiti_most_viewed {
+                    a.img href={ (root_url) "views/graffiti/" (graffiti.id) } {
+                      @if let Some(image) = graffiti.thumbnail {
+                        img src=(format!("{}static/img/graffiti/{}/{}_p2.jpg", root_url, image.get(0..=1).unwrap_or(""), image));
+                      } @else {
+                        .no-image {  }
+                      }
+                    }
+                  } @else {
+                    a.img href="#" { .no-image {  } }
+                  }
                 }
               }
             }
