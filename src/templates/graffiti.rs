@@ -2,12 +2,26 @@
   let id: u32 = data.get("id").ok_or("")?.parse()?;
 
   let (graffiti, location) = db.query_row("
-    select
-      a.id as '0', a.complaint_id as '1', a.datetime as '2', a.shift_time as '3', a.intervening as '4', a.companions as '5', a.notes as '6', a.views as '7',
-      b.graffiti_id as '8', b.country as '9', b.city as '10', b.street as '11', b.place as '12', b.property as '13', b.gps_long as '14', b.gps_lat as '15'
-    from `graffiti` a
-    left join `location` b on b.`graffiti_id` = a.`id`
-    where a.`id` = :id", params![id], |row| {
+    select a.id as `0`,
+           a.complaint_id as `1`,
+           a.datetime as `2`,
+           a.shift_time as `3`,
+           a.intervening as `4`,
+           a.companions as `5`,
+           a.notes as `6`,
+           a.views as `7`,
+           b.graffiti_id as `8`,
+           b.country as `9`,
+           b.city as `10`,
+           b.street as `11`,
+           b.place as `12`,
+           b.property as `13`,
+           b.gps_long as `14`,
+           b.gps_lat as `15`
+      from graffiti a
+           left join location b on b.graffiti_id = a.id
+     where a.id = :id
+    ", params![id], |row| {
       Ok((
         model::Graffiti {
           id: row.get(0)?,
@@ -64,9 +78,10 @@
 
   // update views, takes 5ms
   db.execute("
-    update `graffiti`
-      set `views` = `views` + 1
-      where `id` = :id", params![id])?;
+    update graffiti
+       set views = views + 1,
+           last_viewed = :timestamp
+     where id = :id", params![util::get_timestamp() as i64, id])?;
 
   let gps = if let (Some(lat), Some(long)) = (location.gps_lat, location.gps_long){
     format!("{}, {}", lat, long)

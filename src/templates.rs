@@ -75,7 +75,7 @@ pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> 
         script type="text/javascript" src={ (root_url) "static/vendors.js" } {  }
         script type="text/javascript" src={ (root_url) "static/script.js" } {  }
 
-        title { "nipaa =^_^=" }
+        title { "Graffiti database" }
 
         script type="text/javascript" {
           "var __glob = " (PreEscaped((object!{

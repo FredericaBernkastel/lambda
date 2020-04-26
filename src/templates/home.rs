@@ -8,17 +8,48 @@
     select a.id as `0`,
            b.hash as `1`
       from graffiti a
-           left join graffiti_image b on b.graffiti_id = a.id and 
+           left join graffiti_image b on b.graffiti_id = a.id and
                                          b.`order` = 0
      order by a.id desc
-     limit 0, 20"
+     limit 0, 8"
   )?;
-
-  let graffitis = stmt.query_map(params![], |row| {
+  let graffitis_recent = stmt.query_map(params![], |row| {
     Ok(Row {
       id: row.get(0)?,
       thumbnail: row.get(1)?,
     })
+  })?.filter_map(Result::ok);
+
+
+  let mut stmt = db.prepare("
+    select a.id as `0`,
+           b.hash as `1`
+      from graffiti a
+           left join graffiti_image b on b.graffiti_id = a.id and
+                                         b.`order` = 0
+     order by a.last_viewed desc
+     limit 0, 4
+  ")?;
+  let graffitis_last_checked = stmt.query_map(params![], |row| {
+    Ok(Row {
+      id: row.get(0)?,
+      thumbnail: row.get(1)?,
+    })
+  })?.filter_map(Result::ok);
+
+
+  let mut stmt = db.prepare("
+    select id as `0`,
+           name as `1`
+      from author
+     order by last_viewed desc
+     limit 0, 6
+  ")?;
+  let authors_last_checked = stmt.query_map(params![], |row| {
+    Ok((
+      row.get::<_, u32>(0)?,
+      row.get::<_, String>(1)?,
+    ))
   })?.filter_map(Result::ok);
 
   html! {
@@ -30,7 +61,7 @@
           .node103.boxed {
             p.box-title { "Most recent additions" }
             .images {
-              @for graffiti in graffitis {
+              @for graffiti in graffitis_recent {
                 a href={ (root_url) "views/graffiti/" (graffiti.id) } {
                   .image {
                     @if let Some(thumbnail) = graffiti.thumbnail {
@@ -39,7 +70,6 @@
                       .no-image {  }
                     }
                   }
-                  p.title { "Graffiti image" }
                 }
               }
             }
@@ -47,12 +77,15 @@
           .node103.boxed {
             p.box-title { "Last checked graffiti" }
             .images {
-              @for i in 1..5 {
-                a href={ (root_url) "views/graffiti/" (i) } {
+              @for graffiti in graffitis_last_checked {
+                a href={ (root_url) "views/graffiti/" (graffiti.id) } {
                   .image {
-                    .no-image {  }
+                    @if let Some(thumbnail) = graffiti.thumbnail {
+                      img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", root_url, thumbnail.get(0..=1).unwrap_or(""), thumbnail));
+                    } @else {
+                      .no-image {  }
+                    }
                   }
-                  p.title { "Graffiti image" }
                 }
               }
             }
@@ -67,12 +100,9 @@
           .node105.boxed {
             p.box-title { "Last checked authors" }
             .authors {
-              a href={ (root_url) "views/author/1" } { "AuthrorName1" }
-              a href={ (root_url) "views/author/1" } { "AuthrorName2" }
-              a href={ (root_url) "views/author/1" } { "AuthrorName3" }
-              a href={ (root_url) "views/author/1" } { "AuthrorName4" }
-              a href={ (root_url) "views/author/1" } { "AuthrorName5" }
-              a href={ (root_url) "views/author/1" } { "AuthrorName6" }
+              @for (id, name) in authors_last_checked {
+                a href={ (root_url) "views/author/" (id) } { (name) }
+              }
             }
           }
         }

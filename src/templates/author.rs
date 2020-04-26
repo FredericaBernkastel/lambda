@@ -114,9 +114,10 @@
 
   // update views, takes 5ms
   db.execute("
-    update `author`
-      set `views` = `views` + 1
-      where `id` = :id", params![id])?;
+      update author
+         set views = views + 1,
+             last_viewed = :timestamp
+       where id = :id", params![util::get_timestamp() as i64, id])?;
 
   html! {
     (include!("header.rs"))

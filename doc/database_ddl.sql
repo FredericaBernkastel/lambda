@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Sat Apr 25 15:26:55 2020
+-- File generated with SQLiteStudio v3.2.1 on Sun Apr 26 15:59:50 2020
 --
 -- Text encoding used: System
 --
@@ -20,7 +20,8 @@ create table author (
   notes           TEXT    not null
                           default (''),
   views           INTEGER not null
-                          default (0) 
+                          default (0),
+  last_viewed     INTEGER
 );
 
 
@@ -48,7 +49,8 @@ create table graffiti (
   notes        TEXT    not null
                        default (''),
   views        INTEGER not null
-                       default (0) 
+                       default (0),
+  last_viewed  INTEGER
 );
 
 
