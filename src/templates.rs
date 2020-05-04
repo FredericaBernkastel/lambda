@@ -1,12 +1,22 @@
-use std::error::Error;
 use maud::{DOCTYPE, html, Markup, PreEscaped};
+use actix_web::web;
+use serde_json::json;
 use path_tree::PathTree;
 use strum::IntoEnumIterator;
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
-use crate::{util, config::Config, model, DBConn as DB};
+use lazy_static::lazy_static;
+use runtime_fmt::{rt_format, rt_format_args};
+use rusqlite::params;
+use crate::{
+  web_error::WebError,
+  util,
+  config::Config,
+  model,
+  DB
+};
 
-pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> Result<Markup, Box<dyn Error>> {
+pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> Result<Markup, WebError> {
   let root_url = config.web.root_url.as_str();
   let cors_h = util::gen_cors_hash(util::get_timestamp(), config);
   lazy_static! {
@@ -34,29 +44,33 @@ pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> 
   let page = match PATH_TREE.find(uri.as_str()) {
     Some((path, data)) => {
       let path = *path;
-      let data: HashMap<_, _> = data.into_iter().collect();
-      __path_t = (path, data.clone());
-      if path == "/login" {
-        include!("templates/login.rs")
-      } else {
-        let user = match user {
-          Some(user) => user,
-          None => return Err("unauthorized".into())
-        };
+      let data: HashMap<_, _> = data
+        .into_iter()
+        .map(|(arg, value)| (arg.to_string(), value.to_string())).
+        collect();
+      __path_t = (path.clone(), data.clone());
 
-        match path {
-          "/home" => include!("templates/home.rs"),
-          "/graffitis" => include!("templates/graffitis.rs"),
-          "/graffiti/add" => include!("templates/graffiti-add.rs"),// -------
-          "/graffiti/:id" => include!("templates/graffiti.rs"),//           |
-          "/graffiti/:id/edit" => include!("templates/graffiti-add.rs"),// --
-          "/authors" => include!("templates/authors.rs"),
-          "/author/add" => include!("templates/author-add.rs"),//------------
-          "/author/:id" => include!("templates/author.rs"),//               |
-          "/author/:id/edit" => include!("templates/author-add.rs"),// ------
-          "/tags" => include!("templates/tags.rs"),
-          "/help" => include!("templates/help.rs"),
-          _ => unreachable!()
+      match path {
+        "/login" => include!("templates/login.rs"),
+        _ => {
+          let user = match user {
+            Some(user) => user,
+            None => return Err("unauthorized".into())
+          };
+          match path {
+            "/home" => include!("templates/home.rs"),
+            "/graffitis" => include!("templates/graffitis.rs"),
+            "/graffiti/add" => include!("templates/graffiti-add.rs"),// -------
+            "/graffiti/:id" => include!("templates/graffiti.rs"),//           |
+            "/graffiti/:id/edit" => include!("templates/graffiti-add.rs"),// --
+            "/authors" => include!("templates/authors.rs"),
+            "/author/add" => include!("templates/author-add.rs"),//------------
+            "/author/:id" => include!("templates/author.rs"),//               |
+            "/author/:id/edit" => include!("templates/author-add.rs"),// ------
+            "/tags" => include!("templates/tags.rs"),
+            "/help" => include!("templates/help.rs"),
+            _ => unreachable!()
+          }
         }
       }
     },
@@ -78,13 +92,13 @@ pub fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> 
         title { "Graffiti database" }
 
         script type="text/javascript" {
-          "var __glob = " (PreEscaped((object!{
-            path_t: __path_t.0,
-            data: __path_t.1,
-            root_url: root_url,
-            rpc: format!("{}rpc/", root_url),
-            cors_h: cors_h
-          }).dump())) ";"
+          "var __glob = " (PreEscaped(json!({
+            "path_t": __path_t.0,
+            "data": __path_t.1,
+            "root_url": root_url,
+            "rpc": format!("{}rpc/", root_url),
+            "cors_h": cors_h
+          }).to_string())) ";"
         }
       }
       body {

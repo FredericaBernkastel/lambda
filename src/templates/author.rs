@@ -1,123 +1,151 @@
 {
   use rusqlite::OptionalExtension;
 
-  let id: u32 = data.get("id").ok_or("")?.parse()?;
-
-  let author = db.query_row("
-    select name as `0`,
-           age as `1`,
-           height as `2`,
-           handedness as `3`,
-           home_city as `4`,
-           social_networks as `5`,
-           notes as `6`,
-           views as `7`
-      from author
-     where id = :id", params![id], |row| {
-      Ok(model::Author {
-        id: id,
-        name: row.get(0)?,
-        age: row.get(1)?,
-        height: row.get(2)?,
-        handedness: model::Handedness::from_u8(row.get(3)?),
-        home_city: row.get(4)?,
-        social_networks: row.get(5)?,
-        notes: row.get(6)?,
-        views: row.get(7)?
-      })
-    })?;
-
-  let images: Vec<String> = db.prepare("
-    select hash
-      from author_image
-     where author_id = :id
-     order by `order` asc;
-    ")?.query_map(params![id], |row| {
-      Ok(row.get(0)?)
-    })?.filter_map(Result::ok).collect();
-
-  let graffiti_count: u32 = db.query_row("
-    select count( * ) 
-    from graffiti_author
-   where author_id = :id", params![id], |row| {
-      Ok(row.get(0)?)
-   })?;
-
   struct GraffitiImg {
     id: u32,
     thumbnail: Option<String>
   }
 
-  let graffiti_recent = db.query_row("
-    select a.graffiti_id,
-           c.hash
-      from graffiti_author a
-           inner join graffiti b on b.id = a.graffiti_id
-           left join graffiti_image c on c.graffiti_id = b.id and 
-                                         c.`order` = 0
-     where a.author_id = :id
-     order by a.graffiti_id desc
-     limit 1
-    ", params![id], |row| {
-      Ok(GraffitiImg { 
-        id: row.get(0)?,
-        thumbnail: row.get(1)?
-      })
-  }).optional()?;
+  let id: u32 = data.get("id").ok_or("")?.parse()?;
 
-  let graffiti_most_viewed = db.query_row("
-    select a.graffiti_id,
-           c.hash
-      from graffiti_author a
-           inner join graffiti b on b.id = a.graffiti_id
-           left join graffiti_image c on c.graffiti_id = b.id and 
-                                         c.`order` = 0
-     where a.author_id = :id
-     order by b.views desc
-     limit 1
-    ", params![id], |row| {
-      Ok(GraffitiImg { 
-        id: row.get(0)?,
-        thumbnail: row.get(1)?
-      })
-  }).optional()?;
+  let (
 
-  let aggregate_counties: Vec<(String, u32)> = db.prepare("
-    select b.country,
-           count(b.country) as count 
-      from graffiti_author a
-           inner join location b on b.graffiti_id = a.graffiti_id
-     where author_id = :id
-     group by lower(b.country)
-     order by count desc, b.country asc
-    ")?.query_map(params![id], |row| {
+    author,
+    images,
+    graffiti_count,
+    graffiti_recent,
+    graffiti_most_viewed,
+    aggregate_counties,
+    aggregate_cities
+
+  ) = web::block({
+    let db = db.get().unwrap();
+
+    move || -> Result<_, WebError> {
       Ok((
-        row.get(0)?,
-        row.get(1)?,
-      ))
-    })?.filter_map(Result::ok).collect();
+        // author
+        db.query_row("
+          select name as `0`,
+                 age as `1`,
+                 height as `2`,
+                 handedness as `3`,
+                 home_city as `4`,
+                 social_networks as `5`,
+                 notes as `6`,
+                 views as `7`
+            from author
+           where id = :id", params![id], |row| {
+            Ok(model::Author {
+              id: id,
+              name: row.get(0)?,
+              age: row.get(1)?,
+              height: row.get(2)?,
+              handedness: model::Handedness::from_u8(row.get(3)?),
+              home_city: row.get(4)?,
+              social_networks: row.get(5)?,
+              notes: row.get(6)?,
+              views: row.get(7)?
+            })
+          })?,
 
-  let aggregate_cities: Vec<(String, u32)> = db.prepare("
-    select b.city,
-           count(b.city) as count
-      from graffiti_author a
-           inner join location b on b.graffiti_id = a.graffiti_id
-     where author_id = :id
-     group by lower(b.city)
-     order by count desc, b.city asc
-    ")?.query_map(params![id], |row| {
-      Ok((
-        row.get(0)?,
-        row.get(1)?,
-      ))
-    })?.filter_map(Result::ok).collect();
+        // images
+        db.prepare("
+          select hash
+            from author_image
+           where author_id = :id
+           order by `order` asc
+           ")?.query_map(params![id], |row| {
+            Ok(row.get(0)?)
+          })?.filter_map(Result::ok).collect(): Vec<String>,
 
-  // update views, takes 5ms
-  db.execute("
+        // graffiti_count
+        db.query_row("
+          select count( * ) 
+          from graffiti_author
+         where author_id = :id", params![id], |row| {
+            Ok(row.get(0)?)
+         })?: u32,
+
+        // graffiti_recent
+        db.query_row("
+          select a.graffiti_id,
+                 c.hash
+            from graffiti_author a
+                 inner join graffiti b on b.id = a.graffiti_id
+                 left join graffiti_image c on c.graffiti_id = b.id and 
+                                               c.`order` = 0
+           where a.author_id = :id
+           order by a.graffiti_id desc
+           limit 1
+          ", params![id], |row| {
+            Ok(GraffitiImg { 
+              id: row.get(0)?,
+              thumbnail: row.get(1)?
+            })
+          }).optional()?,
+
+        // graffiti_most_viewed
+        db.query_row("
+          select a.graffiti_id,
+                 c.hash
+            from graffiti_author a
+                 inner join graffiti b on b.id = a.graffiti_id
+                 left join graffiti_image c on c.graffiti_id = b.id and 
+                                               c.`order` = 0
+           where a.author_id = :id
+           order by b.views desc
+           limit 1
+          ", params![id], |row| {
+            Ok(GraffitiImg { 
+              id: row.get(0)?,
+              thumbnail: row.get(1)?
+            })
+        }).optional()?,
+
+        // aggregate_counties
+        db.prepare("
+          select b.country,
+                 count(b.country) as count 
+            from graffiti_author a
+                 inner join location b on b.graffiti_id = a.graffiti_id
+           where author_id = :id
+           group by lower(b.country)
+           order by count desc, b.country asc
+          ")?.query_map(params![id], |row| {
+            Ok((
+              row.get(0)?,
+              row.get(1)?,
+            ))
+          })?.filter_map(Result::ok).collect(): Vec<(String, u32)>,
+
+        // aggregate_cities
+        db.prepare("
+          select b.city,
+                 count(b.city) as count
+            from graffiti_author a
+                 inner join location b on b.graffiti_id = a.graffiti_id
+           where author_id = :id
+           group by lower(b.city)
+           order by count desc, b.city asc
+          ")?.query_map(params![id], |row| {
+            Ok((
+              row.get(0)?,
+              row.get(1)?,
+            ))
+          })?.filter_map(Result::ok).collect(): Vec<(String, u32)>
+      ))
+    }
+  }).await?;
+
+  // update views, non-blocking
+  // SLOW
+  actix_rt::spawn( async move {
+    db.get().unwrap().execute("
       update author
          set views = views + 1,
              last_viewed = :timestamp
-       where id = :id", params![util::get_timestamp() as i64, id])?;
+       where id = :id", params![util::get_timestamp() as i64, id]).ok();
+  });
 
   html! {
     (include!("header.rs"))
@@ -144,7 +172,7 @@
                 @if let Some(image) = images.get(0) {
                   img data-id="0" src=(format!("{}static/img/author/{}/{}_p1.jpg", root_url, image.get(0..=1).unwrap_or(""), image));
                   .images data-type="x-template" {
-                    (json::stringify(images))
+                    (json!(images))
                   }
                 } @else {
                   .no-image {  }
@@ -183,12 +211,12 @@
               p.box-title { "Zones of activity" }
               .descr {
                 .row { .l { "Countries: " } .r {
-                  @for (country, count) in aggregate_counties.iter() {
+                  @for (country, count) in aggregate_counties.into_iter() {
                     (format!("{} ({}), ", country, count))
                   }
                 } }
                 .row { .l { "Cities: " } .r { 
-                  @for (city, count) in aggregate_cities.iter() {
+                  @for (city, count) in aggregate_cities.into_iter() {
                     (format!("{} ({}), ", city, count))
                   }
                 } }

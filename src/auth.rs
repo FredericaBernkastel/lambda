@@ -2,8 +2,9 @@ use sha2::{Sha256, Digest};
 use hex_slice::AsHex;
 use actix_session::Session;
 use actix_web::web;
+use rusqlite::{params, named_params};
 use crate::{util, config::Config, model, DB};
-use crate::rpc::RpcError as Error;
+use crate::web_error::WebError;
 
 pub fn password_hash(password: &String, config: &Config) -> String {
   format!("{:02x}", Sha256::digest(format!("{}{}", password, config.web.secret_key).as_bytes()))
@@ -21,7 +22,7 @@ pub async fn check_session(ssid: &String, db: DB) -> Option<model::User> {
   let ssid = ssid.clone();
   if ssid.len() != 64 { return None; }
 
-  web::block(move || -> Result<model::User, Error> {
+  web::block(move || -> Result<model::User, WebError> {
     let db = db.get().unwrap();
 
     // query session
@@ -35,7 +36,7 @@ pub async fn check_session(ssid: &String, db: DB) -> Option<model::User> {
 
     // check for expired
     if session.expires < util::get_timestamp() {
-      return Err(Error::InvalidLogin);
+      return Err(WebError::InvalidLogin);
     }
 
     // query user
@@ -51,7 +52,7 @@ pub async fn check_session(ssid: &String, db: DB) -> Option<model::User> {
     .ok()
 }
 
-pub async fn login(login: &String, password: &String, db: DB, config: &Config, session: Session) -> Result<(), Error> {
+pub async fn login(login: &String, password: &String, db: DB, config: &Config, session: Session) -> Result<(), WebError> {
   // query user by login
   let user = web::block({
     let login = login.clone();
@@ -64,10 +65,10 @@ pub async fn login(login: &String, password: &String, db: DB, config: &Config, s
         password: row.get(2)?,
       })
     })
-  }}).await.map_err(|_| Error::InvalidLogin)?;
+  }}).await.map_err(|_| WebError::InvalidLogin)?;
 
   // check password hash
-  if user.password != password_hash(password, config) { return Err(Error::InvalidLogin); }
+  if user.password != password_hash(password, config) { return Err(WebError::InvalidLogin); }
 
   let timestamp = util::get_timestamp();
 
@@ -78,7 +79,7 @@ pub async fn login(login: &String, password: &String, db: DB, config: &Config, s
 
   web::block({
     let db = db.clone();
-    move || -> Result<(), Error> {
+    move || -> Result<(), WebError> {
       let db = db.get().unwrap();
 
       // TODO: export iface to cron
@@ -104,15 +105,15 @@ pub async fn login(login: &String, password: &String, db: DB, config: &Config, s
 
   // set session cookie
   session.set("ssid", ssid_cookie)
-    .map_err(|e| Error::InternalError {d: e.to_string()})?;
+    .map_err(|e| WebError::InternalError {d: e.to_string()})?;
 
   Ok(())
 }
 
-pub async fn logout(db: DB, session: Session) -> Result<(), Error> {
+pub async fn logout(db: DB, session: Session) -> Result<(), WebError> {
   let ssid = match session.get::<String>("ssid").ok().flatten() {
     Some(ssid) => ssid,
-    None => return Err(Error::InvalidLogin)
+    None => return Err(WebError::InvalidLogin)
   };
 
   web::block(move || {
@@ -124,4 +125,12 @@ pub async fn logout(db: DB, session: Session) -> Result<(), Error> {
 
   session.remove("ssid");
   Ok(())
+}
+
+pub async fn get_user(db: DB, session: &Session) -> Option<model::User>{
+  // check session
+  match session.get::<String>("ssid").ok().flatten() {
+    Some(ssid) => check_session(&ssid, db).await,
+    None => None
+  }
 }

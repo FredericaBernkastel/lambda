@@ -1,68 +1,27 @@
-use std::error::Error;
-use std::collections::HashMap;
 use path_tree::PathTree;
-use json::{JsonValue};
+use serde_json::{Value as JsonValue, json, from_value as from_json};
 use serde::{Serialize, Deserialize};
-use bytes::Bytes;
 use actix_web::web;
 use actix_session::Session;
 use regex::Regex;
-use crate::{util, config::Config, auth, model, DB, DBConn};
+use lazy_static::lazy_static;
+use rusqlite::{params, named_params};
+use crate::{
+  web_error::WebError,
+  util,
+  util::json_path,
+  config::Config,
+  auth,
+  model,
+  DB,
+  DBConn
+};
 
-enum ErrorCode {
-  Success = 0,
-  InternalError = 100,
-  InvalidLogin = 101,
-  InvalidRequest = 102
-}
-
-#[derive(Debug)]
-pub enum RpcError {
-  InternalError { d: String },
-  InvalidLogin,
-  InvalidRequest
-}
-
-impl From<rusqlite::Error> for RpcError {
-  fn from(error: rusqlite::Error) -> Self {
-    return RpcError::InternalError { d: error.to_string() };
-  }}
-impl<T> From<actix_web::error::BlockingError<T>> for RpcError
-  where T: std::fmt::Debug {
-  fn from(error: actix_web::error::BlockingError<T>) -> Self {
-    return RpcError::InternalError { d: error.to_string() };
-  }}
-impl From<std::io::Error> for RpcError {
-  fn from(error: std::io::Error) -> Self {
-    return RpcError::InternalError { d: error.to_string() };
-  }}
-impl From<&str> for RpcError {
-  fn from(error: &str) -> Self {
-    return RpcError::InternalError { d: error.to_string() };
-  }}
-impl From<image::error::ImageError> for RpcError {
-  fn from(error: image::error::ImageError) -> Self {
-    return RpcError::InternalError { d: error.to_string() };
-  }}
-impl From<std::str::Utf8Error> for RpcError {
-  fn from(error: std::str::Utf8Error) -> Self {
-    return RpcError::InternalError { d: error.to_string() };
-  }}
-impl From<json::Error> for RpcError {
-  fn from(error: json::Error) -> Self {
-    return RpcError::InternalError { d: error.to_string() };
-  }}
-impl From<base64::DecodeError> for RpcError {
-  fn from(error: base64::DecodeError) -> Self {
-    return RpcError::InternalError { d: error.to_string() };
-  }}
-
-pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: Option<model::User>, session: Session) -> Result<String, Box<dyn Error>> {
+pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config, user: Option<model::User>, session: Session) -> Result<String, WebError> {
 
   // check cors hash
   {
-    let post_data = json::parse(std::str::from_utf8(&post_data)?)?;
-    if !util::check_cors_hash(post_data["cors_h"].as_str().ok_or("cors_h")?, config) {
+    if !util::check_cors_hash(json_path::<String>(&mut post_data, "/cors_h")?.as_str(), config) {
       return Err("unauthorized".into());
     }
   }
@@ -87,36 +46,41 @@ pub async fn main(uri: String, post_data: Bytes, db: DB, config: &Config, user: 
     };
   };
   let res = match PATH_TREE.find(uri.as_str()) {
-    Some((path, get_data)) => {
+    Some((path, _get_data)) => {
       let path = *path;
-      let _get_data: HashMap<_, _> = get_data.into_iter().collect();
-      if path == "/auth/login" {
-        if user.is_some() { return Err("invalid request".into()) }
-        auth_login(post_data, db, config, session).await?
-      } else {
-        let _user = match user {
-          Some(user) => user,
-          None => return Err("unauthorized".into())
-        };
+      //let get_data: HashMap<_, _> = get_data.into_iter().collect();
+      match path {
+        "/auth/login" => {
+          match user {
+            Some(_) => return Err("invalid request".into()),
+            None => auth_login(post_data, db, config, session).await?
+          }
+        },
+        _ => {
+          let _user = match user {
+            Some(user) => user,
+            None => return Err("unauthorized".into())
+          };
 
-        match path {
-          "/auth/logout" => auth_logout(db, session).await?,
-          "/graffiti/add" => graffiti_add(post_data, db).await?,
-          "/graffiti/edit" => graffiti_edit(post_data, db).await?,
-          "/graffiti/delete" => graffiti_delete(post_data, db).await?,
-          "/graffiti/store_image" => store_image(post_data, db, vec![(480, 360), (100, 75)]).await,
-          "/author/add" => author_add(post_data, db).await?,
-          "/author/edit" => author_edit(post_data, db).await?,
-          "/author/delete" => author_delete(post_data, db).await?,
-          "/author/store_image" => store_image(post_data, db, vec![(170, 226), (56, 75)]).await,
-          "/search/author_names" => search_author_names(post_data, db).await?,
-          _ => unreachable!()
+          match path {
+            "/auth/logout" => auth_logout(db, session).await?,
+            "/graffiti/add" => graffiti_add(post_data, db).await?,
+            "/graffiti/edit" => graffiti_edit(post_data, db).await?,
+            "/graffiti/delete" => graffiti_delete(post_data, db).await?,
+            "/graffiti/store_image" => store_image(post_data, db, vec![(480, 360), (100, 75)]).await,
+            "/author/add" => author_add(post_data, db).await?,
+            "/author/edit" => author_edit(post_data, db).await?,
+            "/author/delete" => author_delete(post_data, db).await?,
+            "/author/store_image" => store_image(post_data, db, vec![(170, 226), (56, 75)]).await,
+            "/search/author_names" => search_author_names(post_data, db).await?,
+            _ => unreachable!()
+          }
         }
       }
     },
     None => return Err("route not found".into())
   };
-  Ok(res.dump())
+  Ok(res.to_string())
 }
 
 fn images_ctr(
@@ -127,7 +91,7 @@ fn images_ctr(
   sql_delete: &str,
   sql_insert: &str,
   foreign_id: u32
-) -> Result<(), RpcError> {
+) -> Result<(), WebError> {
 
   lazy_static! {
     static ref REG_SHA256: Regex = Regex::new(r"^[0-9a-f]{64}$").unwrap();
@@ -135,7 +99,7 @@ fn images_ctr(
 
   for image in new_images.iter() {
     if !REG_SHA256.is_match(image) {
-      return Err(RpcError::InvalidRequest);
+      return Err(WebError::InvalidRequest);
     }
   }
 
@@ -144,7 +108,7 @@ fn images_ctr(
 
   for image in old_images.iter() {
     if !new_images.contains(image) {
-      for p in vec![0, 1, 2].iter(){
+      for p in 0..=2 {
         let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
         std::fs::remove_file(path)?;
       }
@@ -159,7 +123,7 @@ fn images_ctr(
       if !old_images.contains(image) {
         let prefix = image.get(0..=1).ok_or("")?;
         std::fs::create_dir_all(format!("{}/{}", images_folder, prefix))?;
-        for p in vec![0, 1, 2].iter(){
+        for p in 0..=2 {
           let path = format!("{}/{}/{}_p{}.jpg", images_folder, prefix, image, p);
           std::fs::rename(format!("data/tmp/{}_p{}.jpg", image, p), path)?;
         }
@@ -177,39 +141,37 @@ fn images_ctr(
 }
 
 ///auth/login
-async fn auth_login(post_data: Bytes, db: DB, config: &Config, session: Session) -> Result<JsonValue, Box<dyn Error>> {
+async fn auth_login(post_data: JsonValue, db: DB, config: &Config, session: Session) -> Result<JsonValue, WebError> {
   #[derive(Deserialize)] struct Request {
     login: String,
     password: String
   };
-  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let request: Request = from_json(post_data)?;
   let result = match auth::login(&request.login, &request.password, db, config, session).await {
-    Ok(_) => ErrorCode::Success as u32,
-    Err(RpcError::InvalidLogin) => ErrorCode::InvalidLogin as u32,
-    Err(RpcError::InvalidRequest) => ErrorCode::InvalidRequest as u32,
-    Err(RpcError::InternalError {d}) => {
+    Ok(_) => WebError::Success,
+    Err(WebError::InternalError {d}) => {
       eprintln!("Error: {}", d);
-      ErrorCode::InternalError as u32
-    }
+      WebError::InternalError {d}
+    },
+    Err(e) => e,
   };
-  Ok(object!{
-    result: result
-  })
+  Ok(json!({
+    "result": result.into(): u8
+  }))
 }
 
 ///auth/logout
-async fn auth_logout(db: DB, session: Session) -> Result<JsonValue, Box<dyn Error>> {
+async fn auth_logout(db: DB, session: Session) -> Result<JsonValue, WebError> {
   let result = auth::logout(db, session)
     .await
-    .map(|_| ErrorCode::Success as u32)
-    .map_err(|e| format!("{:?}", e))?;
-  Ok(object!{
-    result: result
-  })
+    .map(|_| WebError::Success)?;
+  Ok(json!({
+    "result": result.into(): u8
+  }))
 }
 
 ///graffiti/add
-async fn graffiti_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
   #[derive(Serialize, Deserialize)] struct Graffiti {
     complaint_id: String,
     datetime: Option<i64>,
@@ -237,11 +199,11 @@ async fn graffiti_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Err
     authors: Vec<Author>,
     images: Vec<String>
   };
-  let mut request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let mut request: Request = from_json(post_data)?;
   request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
   request.authors.dedup_by(|a, b| a.id == b.id);
 
-  let graffiti_id = web::block(move || -> Result<i64, RpcError> {
+  let graffiti_id = web::block(move || -> Result<i64, WebError> {
     let db = db.get().unwrap();
 
     // insert graffiti
@@ -326,7 +288,7 @@ async fn graffiti_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Err
     images_ctr(
       "data/static/img/graffiti",
       vec![],
-      request.images,
+      request.images.into_iter().map(|x| x.to_owned()).collect(),
       &db,
       "delete from `graffiti_image` where `graffiti_id` = :id",
       "insert into `graffiti_image` (
@@ -344,14 +306,14 @@ async fn graffiti_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Err
     Ok(graffiti_id)
   }).await.map_err(|e| e.to_string())?;
 
-  Ok(object!{
-    result: ErrorCode::Success as u32,
-    id: graffiti_id
-  })
+  Ok(json!({
+    "result": WebError::Success.into(): u8,
+    "id": graffiti_id
+  }))
 }
 
 ///graffiti/edit
-async fn graffiti_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
   #[derive(Serialize, Deserialize)] struct Graffiti {
     id: u32,
     complaint_id: String,
@@ -380,11 +342,11 @@ async fn graffiti_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
     authors: Vec<Author>,
     images: Vec<String>
   };
-  let mut request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let mut request: Request = from_json(post_data)?;
   request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
   request.authors.dedup_by(|a, b| a.id == b.id);
 
-  web::block(move || -> Result<(), RpcError> {
+  web::block(move || -> Result<(), WebError> {
     let db = db.get().unwrap();
 
     // update graffiti
@@ -463,7 +425,7 @@ async fn graffiti_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
     images_ctr(
       "data/static/img/graffiti",
       old_images,
-      request.images,
+      request.images.into_iter().map(|x| x.to_owned()).collect(),
       &db,
       "delete from `graffiti_image` where `graffiti_id` = :id",
       "insert into `graffiti_image` (
@@ -481,19 +443,19 @@ async fn graffiti_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
     Ok(())
   }).await.map_err(|e| e.to_string())?;
 
-  Ok(object!{
-    result: ErrorCode::Success as u32
-  })
+  Ok(json!({
+    "result": WebError::Success.into(): u8
+  }))
 }
 
 ///graffiti/delete
-async fn graffiti_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
   #[derive(Serialize, Deserialize)] struct Request {
     id: u32
   };
-  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let request: Request = from_json(post_data)?;
 
-  web::block(move || -> Result<(), RpcError> {
+  web::block(move || -> Result<(), WebError> {
     let db = db.get().unwrap();
     // remove images
     {
@@ -504,7 +466,7 @@ async fn graffiti_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn 
         Ok(row.get::<_, String>(0)?)
       })?.filter_map(Result::ok);
       for image in images {
-        for p in vec![0, 1, 2].iter(){
+        for p in 0..=2 {
           let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
           std::fs::remove_file(path).ok();
         }
@@ -518,13 +480,13 @@ async fn graffiti_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn 
     Ok(())
   }).await.map_err(|e| e.to_string())?;
 
-  Ok(object!{
-    result: ErrorCode::Success as u32
-  })
+  Ok(json!({
+    "result": WebError::Success.into(): u8
+  }))
 }
 
 ///author/add
-async fn author_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
   #[derive(Serialize, Deserialize)] struct Request {
     name: String,
     age: Option<u32>,
@@ -535,15 +497,15 @@ async fn author_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error
     notes: String,
     images: Vec<String>
   };
-  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let request: Request = from_json(post_data)?;
 
   if request.name.is_empty() {
-    return Ok(object! {
-      result: ErrorCode::InvalidRequest as u32
-    })
+    return Ok(json!({
+      "result": WebError::InvalidRequest.into(): u8
+    }))
   }
 
-  let author_id = web::block(move || -> Result<i64, RpcError> {
+  let author_id = web::block(move || -> Result<i64, WebError> {
     let db = db.get().unwrap();
 
     // insert author
@@ -578,7 +540,7 @@ async fn author_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error
     images_ctr(
       "data/static/img/author",
       vec![],
-      request.images,
+      request.images.into_iter().map(|x| x.to_owned()).collect(),
       &db,
       "delete from `author_image` where `author_id` = :id",
       "insert into `author_image` (
@@ -596,14 +558,14 @@ async fn author_add(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error
     Ok(author_id)
   }).await.map_err(|e| e.to_string())?;
 
-  Ok(object!{
-    result: ErrorCode::Success as u32,
-    id: author_id
-  })
+  Ok(json!({
+    "result": WebError::Success.into(): u8,
+    "id": author_id
+  }))
 }
 
 ///author/edit
-async fn author_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
   #[derive(Serialize, Deserialize)] struct Request {
     id: u32,
     name: String,
@@ -615,15 +577,15 @@ async fn author_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Erro
     notes: String,
     images: Vec<String>
   };
-  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let request: Request = from_json(post_data)?;
 
   if request.name.is_empty() {
-    return Ok(object! {
-      result: ErrorCode::InvalidRequest as u32
-    })
+    return Ok(json!({
+      "result": WebError::InvalidRequest.into(): u8
+    }))
   }
 
-  web::block(move || -> Result<(), RpcError> {
+  web::block(move || -> Result<(), WebError> {
     let db = db.get().unwrap();
 
     // update graffiti
@@ -659,7 +621,7 @@ async fn author_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Erro
     images_ctr(
       "data/static/img/author",
       old_images,
-      request.images,
+      request.images.into_iter().map(|x| x.to_owned()).collect(),
       &db,
       "delete from `author_image` where `author_id` = :id",
       "insert into `author_image` (
@@ -677,19 +639,19 @@ async fn author_edit(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Erro
     Ok(())
   }).await.map_err(|e| e.to_string())?;
 
-  Ok(object!{
-    result: ErrorCode::Success as u32
-  })
+  Ok(json!({
+    "result": WebError::Success.into(): u8
+  }))
 }
 
 ///author/delete
-async fn author_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
   #[derive(Serialize, Deserialize)] struct Request {
     id: u32
   };
-  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let request: Request = from_json(post_data)?;
 
-  web::block(move || -> Result<(), RpcError> {
+  web::block(move || -> Result<(), WebError> {
     let db = db.get().unwrap();
     // remove images
     {
@@ -700,7 +662,7 @@ async fn author_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
         Ok(row.get::<_, String>(0)?)
       })?.filter_map(Result::ok);
       for image in images {
-        for p in vec![0, 1, 2].iter(){
+        for p in 0..=2 {
           let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
           std::fs::remove_file(path).ok();
         }
@@ -712,24 +674,24 @@ async fn author_delete(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Er
     Ok(())
   }).await.map_err(|e| e.to_string())?;
 
-  Ok(object!{
-    result: ErrorCode::Success as u32
-  })
+  Ok(json!({
+    "result": WebError::Success.into(): u8
+  }))
 }
 
 ///store_image
-async fn store_image(post_data: Bytes, db: DB, sizes: Vec<(u32, u32)>) -> JsonValue {
+async fn store_image(mut post_data: JsonValue, db: DB, sizes: Vec<(u32, u32)>) -> JsonValue {
   use image::{ImageFormat, imageops::FilterType};
 
-  web::block( move || -> Result<JsonValue, RpcError> {
+  web::block( move || -> Result<JsonValue, WebError> {
     let db = db.get().unwrap();
+    const ERR: WebError = WebError::InvalidRequest;
 
-    let post_data = json::parse(std::str::from_utf8(&post_data)?)?;
     let image = {
-      let image_b64 = post_data["data"].as_str().ok_or(RpcError::InvalidRequest)?;
-      if image_b64.get(0..=22) != Some("data:image/jpeg;base64,") { return Err(RpcError::InvalidRequest); }
+      let image_b64 = json_path::<String>(&mut post_data, "/data")?;
+      if image_b64.get(0..=22) != Some("data:image/jpeg;base64,") { return Err(ERR); }
       image::load_from_memory_with_format(
-        base64::decode( image_b64.get(23..).ok_or(RpcError::InvalidRequest)?)?.as_slice(),
+        base64::decode( image_b64.get(23..).ok_or(ERR)?)?.as_slice(),
         ImageFormat::Jpeg
       )?
     };
@@ -740,9 +702,9 @@ async fn store_image(post_data: Bytes, db: DB, sizes: Vec<(u32, u32)>) -> JsonVa
     image.save(format!("data/tmp/{}_p0.jpg", temp_id))?;
 
     // generate thumbnails
-    for (i, size) in sizes.iter().enumerate() {
+    for (i, (width, height)) in sizes.into_iter().enumerate() {
       image
-        .resize(size.0, size.1, FilterType::Lanczos3)
+        .resize(width, height, FilterType::Lanczos3)
         .save(format!("data/tmp/{}_p{}.jpg", temp_id, i + 1))?;
     }
 
@@ -758,36 +720,36 @@ async fn store_image(post_data: Bytes, db: DB, sizes: Vec<(u32, u32)>) -> JsonVa
         Ok(row.get::<_, String>(0)?)
       })?.filter_map(Result::ok);
       for image in images {
-        for p in vec![0, 1, 2].iter() {
-          std::fs::remove_file(format!("data/tmp/{}_p{}.jpg", image, p))?;
+        for p in 0..=2 {
+          std::fs::remove_file(format!("data/tmp/{}_p{}.jpg", image, p)).ok();
         }
       }
       db.execute("delete from `tmp_store_image` where `timestamp` < :timestamp", params![expired as i64])?;
     }
-    Ok(object!{
-      result: ErrorCode::Success as u32,
-      temp_id: temp_id
-    })
+    Ok(json!({
+      "result": WebError::Success.into(): u8,
+      "temp_id": temp_id
+    }))
   }).await
     .unwrap_or_else(|e| {
       eprintln!("{:?}", e);
-      object! {
-        result: ErrorCode::InternalError as u32
-      }
+      json!({
+        "result": WebError::from(e).into(): u8
+      })
     })
 }
 
 ///search/author_names
-async fn search_author_names(post_data: Bytes, db: DB) -> Result<JsonValue, Box<dyn Error>> {
+async fn search_author_names(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
   #[derive(Deserialize)] struct Request {
     term: String
   };
-  let request: Request = serde_json::from_slice(post_data.as_ref())?;
+  let request: Request = from_json(post_data)?;
   struct Row {
     id: u32,
     name: String
   };
-  let names = web::block(move || -> Result<Vec<Row>, RpcError> {
+  let names = web::block(move || -> Result<Vec<Row>, WebError> {
     let db = db.get().unwrap();
     let mut stmt = db.prepare("
       select id,
@@ -804,11 +766,13 @@ async fn search_author_names(post_data: Bytes, db: DB) -> Result<JsonValue, Box<
     })?.filter_map(Result::ok).collect();
     Ok(names)
   }).await.map_err(|e| e.to_string())?;
-  let names: Vec<JsonValue> = names.iter().map(|x| object! {
-    id: x.id,
-    name: x.name.clone()
-  }).collect();
-  Ok(object! {
-    result: names
-  })
+
+  let names: Vec<JsonValue> = names.into_iter().map(|x| json!({
+      "id": x.id,
+      "name": x.name
+    })).collect();
+
+  Ok(json!({
+    "result": names
+  }))
 }

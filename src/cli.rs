@@ -1,4 +1,6 @@
 use std::process::exit;
+use clap::{clap_app, value_t};
+use rusqlite::params;
 use crate::auth;
 
 pub fn load(config: &crate::config::Config, db: &r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>){

@@ -117,8 +117,8 @@ $(function(){
 
       // check file size
       for(var i = 0, f; f = files[i]; i++)
-        if(f.size > 1024 * 1024){
-          display_error('Maximum file size exceeded (1MB)');
+        if(f.size > 10 * 1024 * 1024){
+          display_error('Maximum file size exceeded (10MB)');
           mutex.release();
           return
         }

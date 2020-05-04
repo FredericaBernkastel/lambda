@@ -7,28 +7,35 @@
     thumbnail: Option<String>
   }
 
-  let mut stmt = db.prepare("
-    select a.id as `0`,
-           a.datetime as `1`,
-           a.views as `2`,
-           b.city as `3`,
-           c.hash as `4`
-      from graffiti a
-           left join location b on b.graffiti_id = a.id
-           left join graffiti_image c on c.graffiti_id = a.id and 
-                                         c.`order` = 0
-     order by a.id desc
-     limit 0, 20"
-  )?;
-  let graffitis = stmt.query_map(params![], |row| {
-    Ok(Row {
-      id: row.get(0)?,
-      datetime: row.get(1)?,
-      views: row.get(2)?,
-      city: row.get(3)?,
-      thumbnail: row.get(4)?,
-    })
-  })?.filter_map(Result::ok);
+  let graffitis = web::block({
+    let db = db.get().unwrap();
+
+    move || -> Result<_, WebError> {
+      let mut stmt = db.prepare("
+        select a.id as `0`,
+               a.datetime as `1`,
+               a.views as `2`,
+               b.city as `3`,
+               c.hash as `4`
+          from graffiti a
+               left join location b on b.graffiti_id = a.id
+               left join graffiti_image c on c.graffiti_id = a.id and 
+                                             c.`order` = 0
+         order by a.id desc
+         limit 0, 20"
+      )?;
+      let graffitis: Vec<Row> = stmt.query_map(params![], |row| {
+        Ok(Row {
+          id: row.get(0)?,
+          datetime: row.get(1)?,
+          views: row.get(2)?,
+          city: row.get(3)?,
+          thumbnail: row.get(4)?,
+        })
+      })?.filter_map(Result::ok).collect();
+      Ok(graffitis)
+    }
+  }).await?;
 
   html! {
     (include!("header.rs"))
@@ -52,7 +59,7 @@
             .col4 { "Date" }
             .col5 { "Views" }
           }
-          @for graffiti in graffitis {
+          @for graffiti in graffitis.into_iter() {
             .row {
               .col1 { (graffiti.id) }
               .col2 { 

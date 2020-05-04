@@ -9,50 +9,60 @@
     notes: String,
   }
 
-  let (author, images) = 
+  let (author, images) = web::block({
+    let db = db.get().unwrap();
 
-    if path == "/author/:id/edit" {
-      let id: u32 = data.get("id").ok_or("")?.parse()?;
-      (
-        db.query_row("
-          select 
-            `name` as '0', `age` as '1', `height` as '2', `handedness` as '3', `home_city` as '4', `social_networks` as '5', `notes` as '6'
-          from `author`
-          where `id` = :id", params![id], |row| {
-            Ok(Author {
-              name: row.get(0)?,
-              age: row.get::<_, Option<u32>>(1)?.map_or("".into(), |x| x.to_string()),
-              height: row.get::<_, Option<u32>>(2)?.map_or("".into(), |x| x.to_string()),
-              handedness: model::Handedness::from_u8(row.get(3)?).unwrap_or(model::Handedness::RightHanded),
-              home_city: row.get(4)?,
-              social_networks: row.get(5)?,
-              notes: row.get(6)?
-            })
-          }
-        )?,
+    move || -> Result<_, WebError> {
+      if path == "/author/:id/edit" {
+        let id: u32 = data.get("id").ok_or("")?.parse()?;
+        
+        Ok((
+          // author
+          db.query_row("
+            select 
+              `name` as '0', `age` as '1', `height` as '2', `handedness` as '3', `home_city` as '4', `social_networks` as '5', `notes` as '6'
+            from `author`
+            where `id` = :id", params![id], |row| {
+              Ok(Author {
+                name: row.get(0)?,
+                age: row.get::<_, Option<u32>>(1)?.map_or("".into(), |x| x.to_string()),
+                height: row.get::<_, Option<u32>>(2)?.map_or("".into(), |x| x.to_string()),
+                handedness: model::Handedness::from_u8(row.get(3)?).unwrap_or(model::Handedness::RightHanded),
+                home_city: row.get(4)?,
+                social_networks: row.get(5)?,
+                notes: row.get(6)?
+              })
+            }
+          )?,
 
-        db.prepare("
-          select `hash` from `author_image`
-          where `author_id` = :id
-          order by `order` asc")?
-          .query_map(params![id], |row| {
-            Ok(row.get::<_, String>(0)?)
-          })?.filter_map(Result::ok).collect()
-      )
-    } else {
-      (
-        Author {
-          name: "".to_string(),
-          age: "".to_string(),
-          height: "".to_string(),
-          handedness: model::Handedness::RightHanded,
-          home_city: "".to_string(),
-          social_networks: "".to_string(),
-          notes: "".to_string(),
-        },
-        vec![]
-      )
-    };
+          // images
+          db.prepare("
+            select `hash` from `author_image`
+            where `author_id` = :id
+            order by `order` asc")?
+            .query_map(params![id], |row| {
+              Ok(row.get::<_, String>(0)?)
+            })?.filter_map(Result::ok).collect()
+        ))
+      } else {
+        Ok((
+          // author
+          Author {
+            name: "".to_string(),
+            age: "".to_string(),
+            height: "".to_string(),
+            handedness: model::Handedness::RightHanded,
+            home_city: "".to_string(),
+            social_networks: "".to_string(),
+            notes: "".to_string(),
+          },
+
+          // images
+          vec![]
+        ))
+      }
+    }
+  }).await?;
 
   html! {
     (include!("header.rs"))
