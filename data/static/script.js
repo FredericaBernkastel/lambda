@@ -421,6 +421,13 @@ $(function(){
         return result;
       }();
 
+      var tags = $wrapper
+        .find('.node112 .tags-input')
+        .select2('data')
+        .map(function(x) {
+          return x.text;
+        });
+
       var data = {
         'cors_h': __cors_h,
         'graffiti': {
@@ -440,7 +447,8 @@ $(function(){
           'gps_long': gps.long,
           'gps_lat': gps.lat
         },
-        'authors': authors
+        'authors': authors,
+        'tags': tags
       }
 
       if (__path_t === '/graffiti/:id/edit')
@@ -560,6 +568,33 @@ $(function(){
       .siblings('.delete')
       .on('click', author_clear_ctx);
 
+
+    // tags input controller
+    $wrapper.find('.node112 .tags-input').select2({
+      tags: true,
+      ajax: {
+        type: 'POST',
+        url: __rpc + 'search/tag_names',
+        data: function (params) {
+          var query = JSON.stringify({
+            'cors_h': __cors_h,
+            'term': params.term
+          });
+          return query;
+        },
+        processResults: function (data) {
+          return {
+            results: JSON.parse(data).result.map(function(x, i){
+              return {
+                'id': x.name,
+                'text': x.name
+              }
+            })
+          };
+        }
+      },
+      minimumInputLength: 1
+    });
   }
 
   /* /graffiti/:id               

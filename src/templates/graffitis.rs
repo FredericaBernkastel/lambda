@@ -8,7 +8,7 @@
   }
 
   let graffitis = web::block({
-    let db = db.get().unwrap();
+    let db = db.get()?;
 
     move || -> Result<_, WebError> {
       let mut stmt = db.prepare("
@@ -59,7 +59,7 @@
             .col4 { "Date" }
             .col5 { "Views" }
           }
-          @for graffiti in graffitis.into_iter() {
+          @for graffiti in graffitis {
             .row {
               .col1 { (graffiti.id) }
               .col2 { 

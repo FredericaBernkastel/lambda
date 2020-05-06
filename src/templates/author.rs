@@ -19,7 +19,7 @@
     aggregate_cities
 
   ) = web::block({
-    let db = db.get().unwrap();
+    let db = db.get()?;
 
     move || -> Result<_, WebError> {
       Ok((
@@ -139,13 +139,15 @@
 
   // update views, non-blocking
   // SLOW
-  actix_rt::spawn( async move {
-    db.get().unwrap().execute("
-      update author
-         set views = views + 1,
-             last_viewed = :timestamp
-       where id = :id", params![util::get_timestamp() as i64, id]).ok();
-  });
+  actix_rt::spawn({
+    let db = db.get()?;
+    async move {
+      db.execute("
+        update author
+           set views = views + 1,
+               last_viewed = :timestamp
+         where id = :id", params![util::get_timestamp() as i64, id]).ok();
+  }});
 
   html! {
     (include!("header.rs"))
@@ -211,12 +213,12 @@
               p.box-title { "Zones of activity" }
               .descr {
                 .row { .l { "Countries: " } .r {
-                  @for (country, count) in aggregate_counties.into_iter() {
+                  @for (country, count) in aggregate_counties {
                     (format!("{} ({}), ", country, count))
                   }
                 } }
                 .row { .l { "Cities: " } .r { 
-                  @for (city, count) in aggregate_cities.into_iter() {
+                  @for (city, count) in aggregate_cities {
                     (format!("{} ({}), ", city, count))
                   }
                 } }

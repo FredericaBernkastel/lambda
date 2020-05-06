@@ -23,7 +23,7 @@ pub async fn check_session(ssid: &String, db: DB) -> Option<model::User> {
   if ssid.len() != 64 { return None; }
 
   web::block(move || -> Result<model::User, WebError> {
-    let db = db.get().unwrap();
+    let db = db.get()?;
 
     // query session
     let session = db.query_row("select * from `sessions` where `id` = :ssid", params![ssid], |row| {
@@ -40,15 +40,17 @@ pub async fn check_session(ssid: &String, db: DB) -> Option<model::User> {
     }
 
     // query user
-    Ok(db.query_row("select * from `users` where `id` = :id", params![session.uid], |row| {
+    let user = db.query_row("select * from `users` where `id` = :id", params![session.uid], |row| {
       Ok(model::User {
         id: row.get(0)?,
         login: row.get(1)?,
         password: row.get(2)?,
       })
-    })?)
+    })?;
+
+    Ok(user)
   }).await
-    .map_err(|e| eprintln!("{}", e.to_string()))
+    .map_err(|e| eprintln!("{:?}", e))
     .ok()
 }
 
@@ -58,13 +60,13 @@ pub async fn login(login: &String, password: &String, db: DB, config: &Config, s
     let login = login.clone();
     let db = db.clone();
     move || {
-    db.get().unwrap().query_row("select * from `users` where `login` = :login", params![login], |row| {
-      Ok(model::User {
-        id: row.get(0)?,
-        login: row.get(1)?,
-        password: row.get(2)?,
-      })
-    })
+      db.get()?.query_row("select * from `users` where `login` = :login", params![login], |row| {
+        Ok(model::User {
+          id: row.get(0)?,
+          login: row.get(1)?,
+          password: row.get(2)?,
+        })
+      }).map_err(|e| e.into(): WebError)
   }}).await.map_err(|_| WebError::InvalidLogin)?;
 
   // check password hash
@@ -80,24 +82,27 @@ pub async fn login(login: &String, password: &String, db: DB, config: &Config, s
   web::block({
     let db = db.clone();
     move || -> Result<(), WebError> {
-      let db = db.get().unwrap();
+      let mut db = db.get()?;
+      let transaction = db.transaction()?;
 
       // TODO: export iface to cron
       // delete expired sessions
-      db.execute_named(
+      transaction.execute_named(
         "delete from `sessions` where `uid` = :uid and `expires` < :timestamp",
         named_params![
         ":uid": user.id,
         ":timestamp": timestamp as i64
       ])?;
 
-      db.execute_named(
+      transaction.execute_named(
         "insert into sessions (`id`, `uid`, `expires`) values (:id, :uid, :expires)",
         named_params![
         ":id": ssid,
         ":uid": user.id,
         ":expires": expires as i64
       ])?;
+
+      transaction.commit()?;
 
       Ok(())
     }
@@ -117,10 +122,10 @@ pub async fn logout(db: DB, session: Session) -> Result<(), WebError> {
   };
 
   web::block(move || {
-    db.get().unwrap().execute(
+    db.get()?.execute(
       "delete from `sessions` where `id` = :ssid",
       params![ssid]
-    )
+    ).map_err(|e| e.into(): WebError)
   }).await?;
 
   session.remove("ssid");

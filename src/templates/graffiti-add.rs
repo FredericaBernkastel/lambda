@@ -25,8 +25,8 @@
     name: String
   }
 
-  let ((graffiti, location), images, authors) = web::block({
-    let db = db.get().unwrap();
+  let ((graffiti, location), images, authors, tags) = web::block({
+    let db = db.get()?;
     
     move || -> Result<_, WebError> {
       if path == "/graffiti/:id/edit" {
@@ -101,7 +101,19 @@
                 indubitable: row.get(1)?,
                 name: row.get(2)?,
               })
-            })?.filter_map(Result::ok).collect()
+            })?.filter_map(Result::ok).collect(),
+
+          // tags
+          db.prepare("
+            select b.name
+              from graffiti_tag a
+                   inner join tag b on b.id = a.tag_id
+             where a.graffiti_id = :graffiti_id")?
+            .query_map(params![id], |row| {
+              Ok(
+                row.get(0)?,
+              )
+            })?.filter_map(Result::ok).collect(): Vec<String>
         ))
 
       } else {
@@ -133,6 +145,9 @@
           vec![],
 
           // authors
+          vec![],
+
+          // tags
           vec![]
         ))
       }
@@ -239,7 +254,7 @@
           .node111.boxed {
             p.box-title { "Images" }
             .img_upload_wrp {
-              @for image in images.into_iter() {
+              @for image in images {
                 (mar_image(Some(&image), "{}static/img/graffiti/{}/{}_p1.jpg", config))
               }
               .image.add title="Upload images" {
@@ -250,9 +265,13 @@
             }
           }
           .node112.boxed {
+            p.box-title { "Tags" }
             .tags_wrp {
-              span.label { "Tags:" }
-              svg.add {use xlink:href={ (root_url) "static/img/sprite.svg#plus" }{}}
+              select.tags-input multiple="" autocomplete="off"  {
+                @for tag in tags {
+                  option selected="" { (tag) }
+                }
+              }
             }
           }
         }

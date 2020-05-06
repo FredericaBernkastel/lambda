@@ -7,8 +7,8 @@
 
   let id: u32 = data.get("id").ok_or("")?.parse()?;
 
-  let ((graffiti, location), images, authors) = web::block({
-    let db = db.clone().get().unwrap();
+  let ((graffiti, location), images, authors, tags) = web::block({
+    let db = db.clone().get()?;
     move || -> Result<_, WebError> {
       Ok((
         // (graffiti, location)
@@ -81,7 +81,19 @@
               indubitable: row.get(1)?,
               name: row.get(2)?,
             })
-          })?.filter_map(Result::ok).collect(): Vec<Author>
+          })?.filter_map(Result::ok).collect(): Vec<Author>,
+
+        // tags
+        db.prepare("
+          select b.name
+            from graffiti_tag a
+                 inner join tag b on b.id = a.tag_id
+           where a.graffiti_id = :graffiti_id")?
+          .query_map(params![id], |row| {
+            Ok(
+              row.get(0)?,
+            )
+          })?.filter_map(Result::ok).collect(): Vec<String>
       ))
     }
   }).await?;
@@ -89,7 +101,7 @@
   // update views, non-blocking
   // SLOW
   actix_rt::spawn({
-    let db = db.clone().get().unwrap();
+    let db = db.get()?;
     async move {
       db.execute("
         update graffiti
@@ -144,9 +156,9 @@
               }
             }
             .tags {
-              a href="#" { "vandalism" }
-              a href="#" { "political" }
-              a href="#" { "motto" }
+              @for tag in tags {
+                a href="#" { (tag) }
+              }
             }
           }
           a.link-next href="#" { 

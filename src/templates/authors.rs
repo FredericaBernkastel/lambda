@@ -10,7 +10,7 @@
   }
 
   let authors = web::block({
-    let db = db.get().unwrap();
+    let db = db.get()?;
     move || -> Result<_, WebError> {
       Ok(
         db.prepare("
@@ -67,7 +67,7 @@
             .col6 { "Home city" }
             .col7 { "Views" }
           }
-          @for author in authors.into_iter() {
+          @for author in authors {
             .row {
               .col1 { (author.id) }
               .col2 { 

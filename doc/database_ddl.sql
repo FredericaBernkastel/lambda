@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Sun Apr 26 15:59:50 2020
+-- File generated with SQLiteStudio v3.2.1 on Wed May 6 23:30:09 2020
 --
 -- Text encoding used: System
 --
@@ -74,6 +74,15 @@ create table graffiti_image (
 );
 
 
+-- Table: graffiti_tag
+create table graffiti_tag (
+  graffiti_id INTEGER references graffiti (id) 
+                      not null,
+  tag_id      INTEGER references tag (id) 
+                      not null
+);
+
+
 -- Table: location
 create table location (
   graffiti_id INTEGER references graffiti (id) 
@@ -101,6 +110,17 @@ create table sessions (
   uid     INTEGER   references users (id) 
                     not null,
   expires INTEGER   not null
+);
+
+
+-- Table: tag
+create table tag (
+  id    INTEGER primary key autoincrement
+                not null,
+  name  TEXT    not null
+                unique on conflict ignore,
+  count INTEGER not null
+                default (0) 
 );
 
 
@@ -161,9 +181,27 @@ create unique index graffiti_image_thumbnail on graffiti_image (
 where `order` = 0;
 
 
+-- Index: graffiti_tag_graffiti_id
+create index graffiti_tag_graffiti_id on graffiti_tag (
+  graffiti_id
+);
+
+
+-- Index: graffiti_tag_tag_id
+create index graffiti_tag_tag_id on graffiti_tag (
+  tag_id
+);
+
+
 -- Index: location_graffiti_id
 create index location_graffiti_id on location (
   graffiti_id
+);
+
+
+-- Index: tag_name
+create index tag_name on tag (
+  name
 );
 
 
@@ -171,6 +209,42 @@ create index location_graffiti_id on location (
 create index users_login on users (
   login
 );
+
+
+-- Trigger: graffiti_tag_delete
+create trigger graffiti_tag_delete
+         after delete
+            on graffiti_tag
+      for each row
+begin
+  update tag
+     set count = count - 1
+   where tag.id = old.tag_id;
+end;
+
+
+-- Trigger: graffiti_tag_insert
+create trigger graffiti_tag_insert
+         after insert
+            on graffiti_tag
+      for each row
+begin
+  update tag
+     set count = count + 1
+   where tag.id = new.tag_id;
+end;
+
+
+-- Trigger: tag_update
+create trigger tag_update
+         after update of count
+            on tag
+      for each row
+          when new.count = 0
+begin
+  delete from tag
+        where id = new.id;
+end;
 
 
 COMMIT TRANSACTION;

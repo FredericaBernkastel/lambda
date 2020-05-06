@@ -17,7 +17,6 @@ use actix_session::{CookieSession, Session};
 use serde_json::Value as JsonValue;
 
 type DB = web::Data<r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>>;
-type DBConn = r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 type Config = web::Data<config::Config>;
 
 #[get("/views/{uri:.+}")]

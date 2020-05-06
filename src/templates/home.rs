@@ -5,7 +5,7 @@
   }
 
   let (graffitis_recent, graffitis_last_checked, authors_last_checked) = web::block({
-    let db = db.get().unwrap();
+    let db = db.get()?;
 
     move || -> Result<_, WebError> {
       let mut stmt = db.prepare("
@@ -69,7 +69,7 @@
           .node103.boxed {
             p.box-title { "Most recent additions" }
             .images {
-              @for graffiti in graffitis_recent.into_iter() {
+              @for graffiti in graffitis_recent {
                 a href={ (root_url) "views/graffiti/" (graffiti.id) } {
                   .image {
                     @if let Some(thumbnail) = graffiti.thumbnail {
@@ -85,7 +85,7 @@
           .node103.boxed {
             p.box-title { "Last checked graffiti" }
             .images {
-              @for graffiti in graffitis_last_checked.into_iter() {
+              @for graffiti in graffitis_last_checked {
                 a href={ (root_url) "views/graffiti/" (graffiti.id) } {
                   .image {
                     @if let Some(thumbnail) = graffiti.thumbnail {
@@ -108,7 +108,7 @@
           .node105.boxed {
             p.box-title { "Last checked authors" }
             .authors {
-              @for (id, name) in authors_last_checked.into_iter() {
+              @for (id, name) in authors_last_checked {
                 a href={ (root_url) "views/author/" (id) } { (name) }
               }
             }

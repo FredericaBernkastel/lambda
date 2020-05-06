@@ -19,7 +19,7 @@ impl Into<u8> for WebError {
 
 impl std::fmt::Display for WebError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    write!(f, "{}", self)
+    write!(f, "{:?}", self)
   }
 }
 
@@ -37,20 +37,20 @@ impl From<String> for WebError {
 
 impl From<rusqlite::Error> for WebError {
   fn from(error: rusqlite::Error) -> Self {
-    return WebError::InternalError { d: error.to_string() };
+    return WebError::InternalError { d: format!("{:?}", error) };
   }
 }
 
 impl<T> From<actix_web::error::BlockingError<T>> for WebError
   where T: std::fmt::Debug {
   fn from(error: actix_web::error::BlockingError<T>) -> Self {
-    return WebError::InternalError { d: error.to_string() };
+    return WebError::InternalError { d: format!("{:?}", error) };
   }
 }
 
 impl From<std::io::Error> for WebError {
   fn from(error: std::io::Error) -> Self {
-    return WebError::InternalError { d: error.to_string() };
+    return WebError::InternalError { d: format!("{:?}", error) };
   }
 }
 
@@ -62,25 +62,25 @@ impl From<&str> for WebError {
 
 impl From<image::error::ImageError> for WebError {
   fn from(error: image::error::ImageError) -> Self {
-    return WebError::InternalError { d: error.to_string() };
+    return WebError::InternalError { d: format!("{:?}", error) };
   }
 }
 
 impl From<std::str::Utf8Error> for WebError {
   fn from(error: std::str::Utf8Error) -> Self {
-    return WebError::InternalError { d: error.to_string() };
+    return WebError::InternalError { d: format!("{:?}", error) };
   }
 }
 
 impl From<serde_json::Error> for WebError {
   fn from(error: serde_json::Error) -> Self {
-    return WebError::InternalError { d: error.to_string() };
+    return WebError::InternalError { d: format!("{:?}", error) };
   }
 }
 
 impl From<base64::DecodeError> for WebError {
   fn from(error: base64::DecodeError) -> Self {
-    return WebError::InternalError { d: error.to_string() };
+    return WebError::InternalError { d: format!("{:?}", error) };
   }
 }
 
@@ -92,6 +92,12 @@ impl From<std::option::NoneError> for WebError {
 
 impl From<std::num::ParseIntError> for WebError {
   fn from(error: std::num::ParseIntError) -> Self {
-    return WebError::InternalError { d: error.to_string() };
+    return WebError::InternalError { d: format!("{:?}", error) };
+  }
+}
+
+impl From<r2d2::Error> for WebError {
+  fn from(error: r2d2::Error) -> Self {
+    return WebError::InternalError { d: format!("{:?}", error) };
   }
 }

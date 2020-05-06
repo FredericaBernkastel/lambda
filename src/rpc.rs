@@ -5,7 +5,7 @@ use actix_web::web;
 use actix_session::Session;
 use regex::Regex;
 use lazy_static::lazy_static;
-use rusqlite::{params, named_params};
+use rusqlite::{params, named_params, Transaction};
 use crate::{
   web_error::WebError,
   util,
@@ -13,8 +13,7 @@ use crate::{
   config::Config,
   auth,
   model,
-  DB,
-  DBConn
+  DB
 };
 
 pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config, user: Option<model::User>, session: Session) -> Result<String, WebError> {
@@ -40,7 +39,8 @@ pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config
         "/author/edit",
         "/author/delete",
         "/author/store_image",
-        "/search/author_names"
+        "/search/author_names",
+        "/search/tag_names"
       ] { tmp.insert(path, path); };
       tmp
     };
@@ -73,6 +73,7 @@ pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config
             "/author/delete" => author_delete(post_data, db).await?,
             "/author/store_image" => store_image(post_data, db, vec![(170, 226), (56, 75)]).await,
             "/search/author_names" => search_author_names(post_data, db).await?,
+            "/search/tag_names" => search_tag_names(post_data, db).await?,
             _ => unreachable!()
           }
         }
@@ -87,7 +88,7 @@ fn images_ctr(
   images_folder: &str,
   old_images: Vec<String>,
   new_images: Vec<String>,
-  db: &DBConn,
+  transaction: &Transaction,
   sql_delete: &str,
   sql_insert: &str,
   foreign_id: u32
@@ -97,16 +98,16 @@ fn images_ctr(
     static ref REG_SHA256: Regex = Regex::new(r"^[0-9a-f]{64}$").unwrap();
   }
 
-  for image in new_images.iter() {
+  for image in &new_images {
     if !REG_SHA256.is_match(image) {
       return Err(WebError::InvalidRequest);
     }
   }
 
   // 1. delete the deleted images
-  db.execute(sql_delete, params![foreign_id])?;
+  transaction.execute(sql_delete, params![foreign_id])?;
 
-  for image in old_images.iter() {
+  for image in &old_images {
     if !new_images.contains(image) {
       for p in 0..=2 {
         let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
@@ -116,8 +117,8 @@ fn images_ctr(
   }
   // 2. move new images from temp dir
   {
-    let mut stmt_insert = db.prepare(sql_insert)?;
-    let mut stmt_delete_tmp = db.prepare("delete from `tmp_store_image` where `id` = :hash")?;
+    let mut stmt_insert = transaction.prepare(sql_insert)?;
+    let mut stmt_delete_tmp = transaction.prepare("delete from `tmp_store_image` where `id` = :hash")?;
 
     for (id, image) in new_images.iter().enumerate() {
       if !old_images.contains(image) {
@@ -197,17 +198,19 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErro
     graffiti: Graffiti,
     location: Location,
     authors: Vec<Author>,
-    images: Vec<String>
+    images: Vec<String>,
+    tags: Vec<String>
   };
   let mut request: Request = from_json(post_data)?;
   request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
   request.authors.dedup_by(|a, b| a.id == b.id);
 
   let graffiti_id = web::block(move || -> Result<i64, WebError> {
-    let db = db.get().unwrap();
+    let mut db = db.get()?;
+    let transaction = db.transaction()?;
 
     // insert graffiti
-    db.execute_named("
+    transaction.execute_named("
       insert into `graffiti` (
         `complaint_id`,
         `datetime`,
@@ -230,10 +233,10 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErro
       ":companions":    request.graffiti.companions,
       ":notes":         request.graffiti.notes,
     ])?;
-    let graffiti_id = db.last_insert_rowid();
+    let graffiti_id = transaction.last_insert_rowid();
 
     // insert location
-    db.execute_named("
+    transaction.execute_named("
       insert into `location` (
         `graffiti_id`,
         `country`,
@@ -265,7 +268,7 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErro
 
     // insert graffiti_author
     {
-      let mut stmt = db.prepare("
+      let mut stmt = transaction.prepare("
         insert into graffiti_author (
           graffiti_id,
           author_id,
@@ -276,7 +279,7 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErro
           :author_id,
           :indubitable
         )")?;
-      for author in request.authors.iter() {
+      for author in request.authors {
         stmt.execute_named(named_params![
           ":graffiti_id": graffiti_id,
           ":author_id": author.id,
@@ -285,11 +288,39 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErro
       }
     }
 
+    // insert graffiti tags
+    {
+      let mut stmt = transaction.prepare("insert into tag (name) values (:name)")?;
+      for tag in &request.tags {
+        stmt.execute(params![tag])?;
+      }
+
+      let mut stmt = transaction.prepare("
+        insert into graffiti_tag (
+          graffiti_id,
+          tag_id
+        )
+        values (
+          :graffiti_id,
+          (
+           select id
+             from tag
+            where name = :tag_name
+          )
+        )")?;
+      for tag in request.tags {
+        stmt.execute_named(named_params![
+          ":graffiti_id": graffiti_id,
+          ":tag_name": tag
+        ])?;
+      }
+    }
+
     images_ctr(
       "data/static/img/graffiti",
       vec![],
       request.images.into_iter().map(|x| x.to_owned()).collect(),
-      &db,
+      &transaction,
       "delete from `graffiti_image` where `graffiti_id` = :id",
       "insert into `graffiti_image` (
         `graffiti_id`,
@@ -303,8 +334,10 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErro
       graffiti_id as u32
     )?;
 
+    transaction.commit()?;
+
     Ok(graffiti_id)
-  }).await.map_err(|e| e.to_string())?;
+  }).await?;
 
   Ok(json!({
     "result": WebError::Success.into(): u8,
@@ -340,17 +373,19 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
     graffiti: Graffiti,
     location: Location,
     authors: Vec<Author>,
-    images: Vec<String>
+    images: Vec<String>,
+    tags: Vec<String>
   };
   let mut request: Request = from_json(post_data)?;
   request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
   request.authors.dedup_by(|a, b| a.id == b.id);
 
   web::block(move || -> Result<(), WebError> {
-    let db = db.get().unwrap();
+    let mut db = db.get()?;
+    let transaction = db.transaction()?;
 
     // update graffiti
-    db.execute_named("
+    transaction.execute_named("
       update `graffiti`
         set `complaint_id` = :complaint_id,
             `datetime` = :datetime,
@@ -359,7 +394,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
             `companions` = :companions,
             `notes` = :notes
         where `id` = :id",
-      named_params![
+                              named_params![
         ":id":            request.graffiti.id,
         ":complaint_id":  request.graffiti.complaint_id,
         ":datetime":      request.graffiti.datetime,
@@ -370,7 +405,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
     ])?;
 
     // update location
-    db.execute_named("
+    transaction.execute_named("
       update `location`
         set `country` = :country,
             `city` = :city,
@@ -380,7 +415,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
             `gps_long` = :gps_long,
             `gps_lat` = :gps_lat
         where `graffiti_id` = :graffiti_id",
-      named_params![
+                              named_params![
         ":graffiti_id": request.graffiti.id,
         ":country": request.location.country,
         ":city": request.location.city,
@@ -393,8 +428,8 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
 
     // update graffiti_author
     {
-      db.execute("delete from `graffiti_author` where `graffiti_id` = :id", params![request.graffiti.id])?;
-      let mut stmt = db.prepare("
+      transaction.execute("delete from `graffiti_author` where `graffiti_id` = :id", params![request.graffiti.id])?;
+      let mut stmt = transaction.prepare("
         insert into graffiti_author (
           graffiti_id,
           author_id,
@@ -405,7 +440,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
           :author_id,
           :indubitable
         )")?;
-      for author in request.authors.iter() {
+      for author in request.authors {
         stmt.execute_named(named_params![
           ":graffiti_id": request.graffiti.id,
           ":author_id": author.id,
@@ -414,7 +449,36 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
       }
     }
 
-    let old_images = db.prepare("
+    // update graffiti tags
+    {
+      let mut stmt = transaction.prepare("insert into tag (name) values (:name)")?;
+      for tag in &request.tags {
+        stmt.execute(params![tag])?;
+      }
+      transaction.execute("delete from `graffiti_tag` where `graffiti_id` = :id", params![request.graffiti.id])?;
+
+      let mut stmt = transaction.prepare("
+        insert into graffiti_tag (
+          graffiti_id,
+          tag_id
+        )
+        values (
+          :graffiti_id,
+          (
+           select id
+             from tag
+            where name = :tag_name
+          )
+        )")?;
+      for tag in request.tags {
+        stmt.execute_named(named_params![
+          ":graffiti_id": request.graffiti.id,
+          ":tag_name": tag
+        ])?;
+      }
+    }
+
+    let old_images = transaction.prepare("
         select `hash` from `graffiti_image`
         where `graffiti_id` = :id
         order by `order` asc")?
@@ -426,7 +490,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
       "data/static/img/graffiti",
       old_images,
       request.images.into_iter().map(|x| x.to_owned()).collect(),
-      &db,
+      &transaction,
       "delete from `graffiti_image` where `graffiti_id` = :id",
       "insert into `graffiti_image` (
         `graffiti_id`,
@@ -440,8 +504,10 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
       request.graffiti.id
     )?;
 
+    transaction.commit()?;
+
     Ok(())
-  }).await.map_err(|e| e.to_string())?;
+  }).await?;
 
   Ok(json!({
     "result": WebError::Success.into(): u8
@@ -456,11 +522,12 @@ async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebE
   let request: Request = from_json(post_data)?;
 
   web::block(move || -> Result<(), WebError> {
-    let db = db.get().unwrap();
+    let mut db = db.get()?;
+    let transaction = db.transaction()?;
     // remove images
     {
       let images_folder = "data/static/img/graffiti";
-      let mut stmt = db.prepare(
+      let mut stmt = transaction.prepare(
         "select `hash` from `graffiti_image` where `graffiti_id` = :graffiti_id")?;
       let images = stmt.query_map(params![request.id], |row| {
         Ok(row.get::<_, String>(0)?)
@@ -473,12 +540,15 @@ async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebE
       }
     }
 
-    db.execute("delete from `location` where `graffiti_id` = :id", params![request.id])?;
-    db.execute("delete from `graffiti_image` where `graffiti_id` = :id", params![request.id])?;
-    db.execute("delete from `graffiti_author` where `graffiti_id` = :id", params![request.id])?;
-    db.execute("delete from `graffiti` where `id` = :id", params![request.id])?;
+    transaction.execute("delete from `location` where `graffiti_id` = :id", params![request.id])?;
+    transaction.execute("delete from `graffiti_image` where `graffiti_id` = :id", params![request.id])?;
+    transaction.execute("delete from `graffiti_author` where `graffiti_id` = :id", params![request.id])?;
+    transaction.execute("delete from `graffiti_tag` where `graffiti_id` = :id", params![request.id])?;
+    transaction.execute("delete from `graffiti` where `id` = :id", params![request.id])?;
+
+    transaction.commit()?;
     Ok(())
-  }).await.map_err(|e| e.to_string())?;
+  }).await?;
 
   Ok(json!({
     "result": WebError::Success.into(): u8
@@ -506,10 +576,11 @@ async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError>
   }
 
   let author_id = web::block(move || -> Result<i64, WebError> {
-    let db = db.get().unwrap();
+    let mut db = db.get()?;
+    let transaction = db.transaction()?;
 
     // insert author
-    db.execute_named("
+    transaction.execute_named("
       insert into `author` (
         `name`,
         `age`,
@@ -535,13 +606,13 @@ async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError>
       ":social_networks": request.social_networks,
       ":notes":           request.notes,
     ])?;
-    let author_id = db.last_insert_rowid();
+    let author_id = transaction.last_insert_rowid();
 
     images_ctr(
       "data/static/img/author",
       vec![],
       request.images.into_iter().map(|x| x.to_owned()).collect(),
-      &db,
+      &transaction,
       "delete from `author_image` where `author_id` = :id",
       "insert into `author_image` (
         `author_id`,
@@ -555,8 +626,10 @@ async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError>
       author_id as u32
     )?;
 
+    transaction.commit()?;
+
     Ok(author_id)
-  }).await.map_err(|e| e.to_string())?;
+  }).await?;
 
   Ok(json!({
     "result": WebError::Success.into(): u8,
@@ -586,10 +659,11 @@ async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError
   }
 
   web::block(move || -> Result<(), WebError> {
-    let db = db.get().unwrap();
+    let mut db = db.get()?;
+    let transaction = db.transaction()?;
 
     // update graffiti
-    db.execute_named("
+    transaction.execute_named("
       update `author`
         set `name` = :name,
             `age` = :age,
@@ -610,7 +684,7 @@ async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError
         ":notes":           request.notes,
     ])?;
 
-    let old_images = db.prepare("
+    let old_images = transaction.prepare("
       select `hash` from `author_image`
       where `author_id` = :id
       order by `order` asc")?
@@ -622,7 +696,7 @@ async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError
       "data/static/img/author",
       old_images,
       request.images.into_iter().map(|x| x.to_owned()).collect(),
-      &db,
+      &transaction,
       "delete from `author_image` where `author_id` = :id",
       "insert into `author_image` (
         `author_id`,
@@ -636,8 +710,10 @@ async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError
       request.id
     )?;
 
+    transaction.commit()?;
+
     Ok(())
-  }).await.map_err(|e| e.to_string())?;
+  }).await?;
 
   Ok(json!({
     "result": WebError::Success.into(): u8
@@ -652,11 +728,12 @@ async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
   let request: Request = from_json(post_data)?;
 
   web::block(move || -> Result<(), WebError> {
-    let db = db.get().unwrap();
+    let mut db = db.get()?;
+    let transaction = db.transaction()?;
     // remove images
     {
       let images_folder = "data/static/img/author";
-      let mut stmt = db.prepare(
+      let mut stmt = transaction.prepare(
         "select `hash` from `author_image` where `author_id` = :author_id")?;
       let images = stmt.query_map(params![request.id], |row| {
         Ok(row.get::<_, String>(0)?)
@@ -668,11 +745,13 @@ async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
         }
       }
     }
-    db.execute("delete from `author_image` where `author_id` = :id", params![request.id])?;
-    db.execute("delete from `graffiti_author` where `author_id` = :id", params![request.id])?;
-    db.execute("delete from `author` where `id` = :id", params![request.id])?;
+    transaction.execute("delete from `author_image` where `author_id` = :id", params![request.id])?;
+    transaction.execute("delete from `graffiti_author` where `author_id` = :id", params![request.id])?;
+    transaction.execute("delete from `author` where `id` = :id", params![request.id])?;
+
+    transaction.commit()?;
     Ok(())
-  }).await.map_err(|e| e.to_string())?;
+  }).await?;
 
   Ok(json!({
     "result": WebError::Success.into(): u8
@@ -684,7 +763,8 @@ async fn store_image(mut post_data: JsonValue, db: DB, sizes: Vec<(u32, u32)>) -
   use image::{ImageFormat, imageops::FilterType};
 
   web::block( move || -> Result<JsonValue, WebError> {
-    let db = db.get().unwrap();
+    let mut db = db.get()?;
+    let transaction = db.transaction()?;
     const ERR: WebError = WebError::InvalidRequest;
 
     let image = {
@@ -708,23 +788,25 @@ async fn store_image(mut post_data: JsonValue, db: DB, sizes: Vec<(u32, u32)>) -
         .save(format!("data/tmp/{}_p{}.jpg", temp_id, i + 1))?;
     }
 
-    db.execute("
+    transaction.execute("
       insert into `tmp_store_image`
         (`id`, `timestamp`)
         values(:id, :timestamp)", params![temp_id, util::get_timestamp() as i64])?;
     //garbage collector
     {
       let expired = util::get_timestamp() - 86400; // 1 day
-      let mut stmt = db.prepare("select `id` from `tmp_store_image` where `timestamp` < :timestamp")?;
-      let images = stmt.query_map(params![expired as i64], |row| {
-        Ok(row.get::<_, String>(0)?)
-      })?.filter_map(Result::ok);
+      let images = transaction.prepare("select `id` from `tmp_store_image` where `timestamp` < :timestamp")?
+       .query_map(params![expired as i64], |row| {
+        Ok(row.get(0)?)
+      })?.filter_map(Result::ok).collect(): Vec<String>;
       for image in images {
         for p in 0..=2 {
           std::fs::remove_file(format!("data/tmp/{}_p{}.jpg", image, p)).ok();
         }
       }
-      db.execute("delete from `tmp_store_image` where `timestamp` < :timestamp", params![expired as i64])?;
+      transaction.execute("delete from `tmp_store_image` where `timestamp` < :timestamp", params![expired as i64])?;
+
+      transaction.commit()?;
     }
     Ok(json!({
       "result": WebError::Success.into(): u8,
@@ -750,7 +832,7 @@ async fn search_author_names(post_data: JsonValue, db: DB) -> Result<JsonValue, 
     name: String
   };
   let names = web::block(move || -> Result<Vec<Row>, WebError> {
-    let db = db.get().unwrap();
+    let db = db.get()?;
     let mut stmt = db.prepare("
       select id,
              name
@@ -765,10 +847,44 @@ async fn search_author_names(post_data: JsonValue, db: DB) -> Result<JsonValue, 
       })
     })?.filter_map(Result::ok).collect();
     Ok(names)
-  }).await.map_err(|e| e.to_string())?;
+  }).await?;
 
   let names: Vec<JsonValue> = names.into_iter().map(|x| json!({
       "id": x.id,
+      "name": x.name
+    })).collect();
+
+  Ok(json!({
+    "result": names
+  }))
+}
+
+///search/tag_names
+async fn search_tag_names(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
+  #[derive(Deserialize)] struct Request {
+    term: String
+  };
+  let request: Request = from_json(post_data)?;
+  struct Row {
+    name: String
+  };
+  let names = web::block(move || -> Result<Vec<Row>, WebError> {
+    let db = db.get()?;
+    let mut stmt = db.prepare("
+      select name
+        from tag
+       where name like :term
+       limit 10")?;
+    let term = format!("%{}%", request.term);
+    let tags: Vec<Row> = stmt.query_map(params![term], |row| {
+      Ok(Row {
+        name: row.get(0)?,
+      })
+    })?.filter_map(Result::ok).collect();
+    Ok(tags)
+  }).await?;
+
+  let names: Vec<JsonValue> = names.into_iter().map(|x| json!({
       "name": x.name
     })).collect();
 

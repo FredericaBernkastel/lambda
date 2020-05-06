@@ -10,7 +10,7 @@
   }
 
   let (author, images) = web::block({
-    let db = db.get().unwrap();
+    let db = db.get()?;
 
     move || -> Result<_, WebError> {
       if path == "/author/:id/edit" {
@@ -112,8 +112,8 @@
             .node117_2.boxed {
               p.box-title { "Images" }
               .img_upload_wrp {
-                @for image in images.iter(){
-                  (mar_image(Some(image), "{}static/img/author/{}/{}_p1.jpg", config))
+                @for image in images {
+                  (mar_image(Some(&image), "{}static/img/author/{}/{}_p1.jpg", config))
                 }
                 .image.add title="Upload images" {
                   svg {use xlink:href={ (root_url) "static/img/box-add.svg#box-add" }{}}
