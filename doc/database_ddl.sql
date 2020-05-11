@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Wed May 6 23:30:09 2020
+-- File generated with SQLiteStudio v3.2.1 on Mon May 11 19:58:42 2020
 --
 -- Text encoding used: System
 --
@@ -232,18 +232,6 @@ begin
   update tag
      set count = count + 1
    where tag.id = new.tag_id;
-end;
-
-
--- Trigger: tag_update
-create trigger tag_update
-         after update of count
-            on tag
-      for each row
-          when new.count = 0
-begin
-  delete from tag
-        where id = new.id;
 end;
 
 

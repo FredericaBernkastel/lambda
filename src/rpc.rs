@@ -5,7 +5,7 @@ use actix_web::web;
 use actix_session::Session;
 use regex::Regex;
 use lazy_static::lazy_static;
-use rusqlite::{params, named_params, Transaction};
+use rusqlite::{params, named_params, Transaction, NO_PARAMS};
 use crate::{
   web_error::WebError,
   util,
@@ -476,6 +476,8 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
           ":tag_name": tag
         ])?;
       }
+      // GC
+      transaction.execute("delete from `tag` where `count` = 0", NO_PARAMS)?;
     }
 
     let old_images = transaction.prepare("
@@ -544,6 +546,7 @@ async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebE
     transaction.execute("delete from `graffiti_image` where `graffiti_id` = :id", params![request.id])?;
     transaction.execute("delete from `graffiti_author` where `graffiti_id` = :id", params![request.id])?;
     transaction.execute("delete from `graffiti_tag` where `graffiti_id` = :id", params![request.id])?;
+    transaction.execute("delete from `tag` where `count` = 0", NO_PARAMS)?; // GC
     transaction.execute("delete from `graffiti` where `id` = :id", params![request.id])?;
 
     transaction.commit()?;

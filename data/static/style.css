@@ -174,11 +174,11 @@ select { padding: 1px 0; }
     .page-graffiti .row1 .link-next { margin: auto; visibility: hidden; }
       .page-graffiti .row1 .link-prev svg,
       .page-graffiti .row1 .link-next svg { width: 50px; height: 80px; color: #888; }
-    .page-graffiti .row1 .node102 {  }  
+    .page-graffiti .row1 .node102 { max-width: 480px; }  
       .page-graffiti .row1 .node102 .graffiti-image { width: 480px; height: 360px; display: flex; align-items: center; justify-content: center; }
         .page-graffiti .row1 .node102 .graffiti-image img { cursor: zoom-in; }
-      .page-graffiti .row1 .node102 .tags { margin-top: 20px; }
-        .page-graffiti .row1 .node102 .tags > * { background-color: #f0f2f5; margin: 0 10px 10px 0; padding: 3px 8px; border-radius: 3px; color: #566d96; font-weight: 500; font-size: 13px; }
+      .page-graffiti .row1 .node102 .tags { margin-top: 20px; display: flex; flex-wrap: wrap; }
+        .page-graffiti .row1 .node102 .tags > * { background-color: #f0f2f5; margin: 0 10px 7px 0; padding: 3px 8px; border-radius: 3px; color: #566d96; font-weight: 500; font-size: 13px; }
     .page-graffiti .row1 .node101 { flex-basis: 255px; margin-left: auto; }
       .page-graffiti .row1 .node101 .items { display: flex; flex-direction: column; }
       .page-graffiti .row1 .node101 .items > * { display: flex; align-items: center; }
