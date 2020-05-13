@@ -2,8 +2,9 @@ use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use sha2::{Sha256, Digest};
 use chrono::{Utc, prelude::DateTime};
 use maud::{html, Markup};
+use error_chain::bail;
 use crate::{
-  web_error::WebError,
+  error::Result,
   config::Config
 };
 
@@ -55,7 +56,7 @@ pub fn redirect(path: &str, config: &Config) -> actix_web::HttpResponse {
     .finish()
 }
 
-pub async fn read_payload(mut payload: actix_web::web::Payload, config: &Config) -> Result<bytes::Bytes, actix_web::Error> {
+pub async fn read_payload(mut payload: actix_web::web::Payload, config: &Config) -> Result<bytes::Bytes> {
   use futures::StreamExt;
 
   // payload is a stream of Bytes objects
@@ -64,14 +65,14 @@ pub async fn read_payload(mut payload: actix_web::web::Payload, config: &Config)
     let chunk = chunk?;
     // limit max size of in-memory payload
     if (post_data.len() + chunk.len()) > config.web.max_request_size as usize {
-      return Err(actix_web::error::ErrorBadRequest("overflow"));
+      bail!("overflow");
     }
     post_data.extend_from_slice(&chunk);
   }
   Ok(post_data.freeze())
 }
 
-pub fn json_path<'a, T: serde::Deserialize<'a>>(data: &'a mut serde_json::Value, path: &'a str) -> Result<T, WebError> {
+pub fn json_path<'a, T: serde::Deserialize<'a>>(data: &'a mut serde_json::Value, path: &'a str) -> Result<T> {
   let value = data.pointer_mut(path)
       .map(serde_json::Value::take)
       .ok_or(format!("unable to extract value \"{}\"", path))?;

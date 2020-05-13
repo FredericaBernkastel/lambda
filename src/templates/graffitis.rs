@@ -7,10 +7,12 @@
     thumbnail: Option<String>
   }
 
+  let page: i64 = data.get("page").unwrap_or(&"1".into()).parse()?;
+
   let graffitis = web::block({
     let db = db.get()?;
 
-    move || -> Result<_, WebError> {
+    move || -> error::Result<_> {
       let mut stmt = db.prepare("
         select a.id as `0`,
                a.datetime as `1`,
@@ -50,7 +52,7 @@
             }
           }
         }
-        (navigation(config))
+        (navigation(config, "{}views/graffitis/page/{}", page, 20, 360)?)
         .table {
           .row.head {
             .col1 { "ID" }
@@ -77,7 +79,7 @@
             }
           }
         }
-        (navigation(config))
+        (navigation(config, "{}views/graffitis/page/{}", page, 20, 360)?)
       }
     }
   }

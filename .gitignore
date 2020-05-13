@@ -1,2 +1,8 @@
 /target
-**/*.rs.bk
+/lambda.iml
+/.cargo
+/.idea
+/data/tmp
+/data/static/img/author
+/data/static/img/graffiti
+/data/main.db

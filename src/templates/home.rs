@@ -7,7 +7,7 @@
   let (graffitis_recent, graffitis_last_checked, authors_last_checked) = web::block({
     let db = db.get()?;
 
-    move || -> Result<_, WebError> {
+    move || -> error::Result<_> {
       let mut stmt = db.prepare("
         select a.id as `0`,
                b.hash as `1`

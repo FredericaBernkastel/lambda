@@ -2,11 +2,17 @@ use sha2::{Sha256, Digest};
 use hex_slice::AsHex;
 use actix_session::Session;
 use actix_web::web;
-use rusqlite::{params, named_params};
-use crate::{util, config::Config, model, DB};
-use crate::web_error::WebError;
+use rusqlite::{params, named_params, OptionalExtension};
+use error_chain::bail;
+use crate::{
+  error::{Result, ErrorKind},
+  util,
+  config::Config,
+  model,
+  DB
+};
 
-pub fn password_hash(password: &String, config: &Config) -> String {
+pub fn password_hash(password: &str, config: &Config) -> String {
   format!("{:02x}", Sha256::digest(format!("{}{}", password, config.web.secret_key).as_bytes()))
 }
 
@@ -18,26 +24,27 @@ pub fn gen_ssid() -> String {
   format!("{:02x}", data.plain_hex(false))
 }
 
-pub async fn check_session(ssid: &String, db: DB) -> Option<model::User> {
-  let ssid = ssid.clone();
-  if ssid.len() != 64 { return None; }
+pub async fn check_session(ssid: String, db: DB) -> Result<Option<model::User>> {
+  //let ssid = ssid.clone();
+  if ssid.len() != 64 { return Ok(None); }
 
-  web::block(move || -> Result<model::User, WebError> {
+  let res = web::block(move || -> Result<Option<model::User>> {
     let db = db.get()?;
 
     // query session
-    let session = db.query_row("select * from `sessions` where `id` = :ssid", params![ssid], |row| {
-      Ok(model::Session{
+    let session = match db.query_row("select * from `sessions` where `id` = :ssid", params![ssid], |row| {
+      Ok(model::Session {
         id: row.get(0)?,
         uid: row.get(1)?,
         expires: row.get::<_, i64>(2)? as u64,
       })
-    })?;
+    }).optional()? {
+      Some(session) => session,
+      None => return Ok(None)
+    }; // invalid session
 
     // check for expired
-    if session.expires < util::get_timestamp() {
-      return Err(WebError::InvalidLogin);
-    }
+    if session.expires < util::get_timestamp() { return Ok(None); }
 
     // query user
     let user = db.query_row("select * from `users` where `id` = :id", params![session.uid], |row| {
@@ -46,31 +53,30 @@ pub async fn check_session(ssid: &String, db: DB) -> Option<model::User> {
         login: row.get(1)?,
         password: row.get(2)?,
       })
-    })?;
+    }).optional()?;
 
     Ok(user)
-  }).await
-    .map_err(|e| eprintln!("{:?}", e))
-    .ok()
+  }).await?;
+  Ok(res)
 }
 
-pub async fn login(login: &String, password: &String, db: DB, config: &Config, session: Session) -> Result<(), WebError> {
+pub async fn login(login: &str, password: &str, db: DB, config: &Config, session: Session) -> Result<()> {
   // query user by login
   let user = web::block({
-    let login = login.clone();
+    let login = login.to_string();
     let db = db.clone();
-    move || {
-      db.get()?.query_row("select * from `users` where `login` = :login", params![login], |row| {
+    move || -> Result<_> {
+      Ok(db.get()?.query_row("select * from `users` where `login` = :login", params![login], |row| {
         Ok(model::User {
           id: row.get(0)?,
           login: row.get(1)?,
           password: row.get(2)?,
         })
-      }).map_err(|e| e.into(): WebError)
-  }}).await.map_err(|_| WebError::InvalidLogin)?;
+      })?)
+  }}).await.map_err(|_| ErrorKind::InvalidLogin)?;
 
   // check password hash
-  if user.password != password_hash(password, config) { return Err(WebError::InvalidLogin); }
+  if user.password != password_hash(password, config) { bail!(ErrorKind::InvalidLogin); }
 
   let timestamp = util::get_timestamp();
 
@@ -81,7 +87,7 @@ pub async fn login(login: &String, password: &String, db: DB, config: &Config, s
 
   web::block({
     let db = db.clone();
-    move || -> Result<(), WebError> {
+    move || -> Result<_> {
       let mut db = db.get()?;
       let transaction = db.transaction()?;
 
@@ -110,32 +116,33 @@ pub async fn login(login: &String, password: &String, db: DB, config: &Config, s
 
   // set session cookie
   session.set("ssid", ssid_cookie)
-    .map_err(|e| WebError::InternalError {d: e.to_string()})?;
+    .map_err(|_| "unable to set cookie")?;
 
   Ok(())
 }
 
-pub async fn logout(db: DB, session: Session) -> Result<(), WebError> {
-  let ssid = match session.get::<String>("ssid").ok().flatten() {
-    Some(ssid) => ssid,
-    None => return Err(WebError::InvalidLogin)
-  };
+pub async fn logout(db: DB, session: Session) -> Result<()> {
+  let ssid = session.get::<String>("ssid")
+    .ok()
+    .flatten()
+    .ok_or(ErrorKind::InvalidLogin)?;
 
-  web::block(move || {
+  web::block(move || -> Result<_> {
     db.get()?.execute(
       "delete from `sessions` where `id` = :ssid",
       params![ssid]
-    ).map_err(|e| e.into(): WebError)
+    )?;
+    Ok(())
   }).await?;
 
   session.remove("ssid");
   Ok(())
 }
 
-pub async fn get_user(db: DB, session: &Session) -> Option<model::User>{
+pub async fn get_user(db: DB, session: &Session) -> Result<Option<model::User>>{
   // check session
   match session.get::<String>("ssid").ok().flatten() {
-    Some(ssid) => check_session(&ssid, db).await,
-    None => None
+    Some(ssid) => check_session(ssid, db).await,
+    None => Ok(None)
   }
 }

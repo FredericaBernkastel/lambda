@@ -28,7 +28,7 @@
   let ((graffiti, location), images, authors, tags) = web::block({
     let db = db.get()?;
     
-    move || -> Result<_, WebError> {
+    move || -> error::Result<_> {
       if path == "/graffiti/:id/edit" {
 
         let id: u32 = data.get("id").ok_or("")?.parse()?;

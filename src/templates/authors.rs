@@ -9,9 +9,11 @@
     thumbnail: Option<String>
   }
 
+  let page: i64 = data.get("page").unwrap_or(&"1".into()).parse()?;
+
   let authors = web::block({
     let db = db.get()?;
-    move || -> Result<_, WebError> {
+    move || -> error::Result<_> {
       Ok(
         db.prepare("
           select a.id as `0`,
@@ -56,7 +58,7 @@
             }
           }
         }
-        (navigation(config))
+        (navigation(config, "{}views/authors/page/{}", page, 20, 360)?)
         .table {
           .row.head {
             .col1 { "ID" }
@@ -87,7 +89,7 @@
             }
           }
         }
-        (navigation(config))
+        (navigation(config, "{}views/authors/page/{}", page, 20, 360)?)
       }
     }
   }

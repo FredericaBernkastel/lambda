@@ -9,7 +9,7 @@
 
   let ((graffiti, location), images, authors, tags) = web::block({
     let db = db.clone().get()?;
-    move || -> Result<_, WebError> {
+    move || -> error::Result<_> {
       Ok((
         // (graffiti, location)
         db.query_row("

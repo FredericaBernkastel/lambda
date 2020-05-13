@@ -6,8 +6,9 @@ use actix_session::Session;
 use regex::Regex;
 use lazy_static::lazy_static;
 use rusqlite::{params, named_params, Transaction, NO_PARAMS};
+use error_chain::bail;
 use crate::{
-  web_error::WebError,
+  error::{Result, Error, ErrorKind},
   util,
   util::json_path,
   config::Config,
@@ -16,12 +17,20 @@ use crate::{
   DB
 };
 
-pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config, user: Option<model::User>, session: Session) -> Result<String, WebError> {
+#[repr(u8)]
+enum Opcode {
+  Success = 0,
+  //InternalError = 100,
+  InvalidLogin = 101,
+  //InvalidRequest = 102
+}
+
+pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config, user: Option<model::User>, session: Session) -> Result<String> {
 
   // check cors hash
   {
     if !util::check_cors_hash(json_path::<String>(&mut post_data, "/cors_h")?.as_str(), config) {
-      return Err("unauthorized".into());
+      bail!("unauthorized");
     }
   }
 
@@ -52,14 +61,14 @@ pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config
       match path {
         "/auth/login" => {
           match user {
-            Some(_) => return Err("invalid request".into()),
+            Some(_) => bail!(ErrorKind::InvalidRequest),
             None => auth_login(post_data, db, config, session).await?
           }
         },
         _ => {
           let _user = match user {
             Some(user) => user,
-            None => return Err("unauthorized".into())
+            None => bail!("unauthorized")
           };
 
           match path {
@@ -79,7 +88,7 @@ pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config
         }
       }
     },
-    None => return Err("route not found".into())
+    None => bail!("route not found")
   };
   Ok(res.to_string())
 }
@@ -92,16 +101,14 @@ fn images_ctr(
   sql_delete: &str,
   sql_insert: &str,
   foreign_id: u32
-) -> Result<(), WebError> {
+) -> Result<()> {
 
   lazy_static! {
     static ref REG_SHA256: Regex = Regex::new(r"^[0-9a-f]{64}$").unwrap();
   }
 
   for image in &new_images {
-    if !REG_SHA256.is_match(image) {
-      return Err(WebError::InvalidRequest);
-    }
+    if !REG_SHA256.is_match(image) { bail!(ErrorKind::InvalidRequest); }
   }
 
   // 1. delete the deleted images
@@ -142,37 +149,37 @@ fn images_ctr(
 }
 
 ///auth/login
-async fn auth_login(post_data: JsonValue, db: DB, config: &Config, session: Session) -> Result<JsonValue, WebError> {
+async fn auth_login(post_data: JsonValue, db: DB, config: &Config, session: Session) -> Result<JsonValue> {
   #[derive(Deserialize)] struct Request {
     login: String,
     password: String
   };
   let request: Request = from_json(post_data)?;
   let result = match auth::login(&request.login, &request.password, db, config, session).await {
-    Ok(_) => WebError::Success,
-    Err(WebError::InternalError {d}) => {
-      eprintln!("Error: {}", d);
-      WebError::InternalError {d}
-    },
-    Err(e) => e,
+    Ok(_) => Opcode::Success,
+    Err(Error(ErrorKind::InvalidLogin, _)) => Opcode::InvalidLogin,
+    Err(e) => bail!(e),
   };
   Ok(json!({
-    "result": result.into(): u8
+    "result": result as u8
   }))
 }
 
 ///auth/logout
-async fn auth_logout(db: DB, session: Session) -> Result<JsonValue, WebError> {
-  let result = auth::logout(db, session)
-    .await
-    .map(|_| WebError::Success)?;
+async fn auth_logout(db: DB, session: Session) -> Result<JsonValue> {
+  let result = auth::logout(db, session).await;
+  let result = match result {
+    Ok(_) => Opcode::Success,
+    Err(Error(ErrorKind::InvalidLogin, _)) => Opcode::InvalidLogin,
+    Err(e) => bail!(e),
+  };
   Ok(json!({
-    "result": result.into(): u8
+    "result": result as u8
   }))
 }
 
 ///graffiti/add
-async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
+async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
   #[derive(Serialize, Deserialize)] struct Graffiti {
     complaint_id: String,
     datetime: Option<i64>,
@@ -205,7 +212,7 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErro
   request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
   request.authors.dedup_by(|a, b| a.id == b.id);
 
-  let graffiti_id = web::block(move || -> Result<i64, WebError> {
+  let graffiti_id = web::block(move || -> Result<_> {
     let mut db = db.get()?;
     let transaction = db.transaction()?;
 
@@ -340,13 +347,13 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErro
   }).await?;
 
   Ok(json!({
-    "result": WebError::Success.into(): u8,
+    "result": Opcode::Success as u8,
     "id": graffiti_id
   }))
 }
 
 ///graffiti/edit
-async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
+async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
   #[derive(Serialize, Deserialize)] struct Graffiti {
     id: u32,
     complaint_id: String,
@@ -380,7 +387,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
   request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
   request.authors.dedup_by(|a, b| a.id == b.id);
 
-  web::block(move || -> Result<(), WebError> {
+  web::block(move || -> Result<_> {
     let mut db = db.get()?;
     let transaction = db.transaction()?;
 
@@ -486,7 +493,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
         order by `order` asc")?
     .query_map(params![request.graffiti.id], |row| {
       Ok(row.get::<_, String>(0)?)
-    })?.filter_map(Result::ok).collect();
+    })?.filter_map(std::result::Result::ok).collect();
 
     images_ctr(
       "data/static/img/graffiti",
@@ -512,18 +519,18 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
   }).await?;
 
   Ok(json!({
-    "result": WebError::Success.into(): u8
+    "result": Opcode::Success as u8
   }))
 }
 
 ///graffiti/delete
-async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
+async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue> {
   #[derive(Serialize, Deserialize)] struct Request {
     id: u32
   };
   let request: Request = from_json(post_data)?;
 
-  web::block(move || -> Result<(), WebError> {
+  web::block(move || -> Result<_> {
     let mut db = db.get()?;
     let transaction = db.transaction()?;
     // remove images
@@ -533,7 +540,7 @@ async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebE
         "select `hash` from `graffiti_image` where `graffiti_id` = :graffiti_id")?;
       let images = stmt.query_map(params![request.id], |row| {
         Ok(row.get::<_, String>(0)?)
-      })?.filter_map(Result::ok);
+      })?.filter_map(std::result::Result::ok);
       for image in images {
         for p in 0..=2 {
           let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
@@ -554,12 +561,12 @@ async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebE
   }).await?;
 
   Ok(json!({
-    "result": WebError::Success.into(): u8
+    "result": Opcode::Success as u8
   }))
 }
 
 ///author/add
-async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
+async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
   #[derive(Serialize, Deserialize)] struct Request {
     name: String,
     age: Option<u32>,
@@ -574,11 +581,11 @@ async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError>
 
   if request.name.is_empty() {
     return Ok(json!({
-      "result": WebError::InvalidRequest.into(): u8
+      "result": Opcode::Success as u8
     }))
   }
 
-  let author_id = web::block(move || -> Result<i64, WebError> {
+  let author_id = web::block(move || -> Result<_> {
     let mut db = db.get()?;
     let transaction = db.transaction()?;
 
@@ -635,13 +642,13 @@ async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError>
   }).await?;
 
   Ok(json!({
-    "result": WebError::Success.into(): u8,
+    "result": Opcode::Success as u8,
     "id": author_id
   }))
 }
 
 ///author/edit
-async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
+async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
   #[derive(Serialize, Deserialize)] struct Request {
     id: u32,
     name: String,
@@ -657,11 +664,11 @@ async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError
 
   if request.name.is_empty() {
     return Ok(json!({
-      "result": WebError::InvalidRequest.into(): u8
+      "result": Opcode::Success as u8
     }))
   }
 
-  web::block(move || -> Result<(), WebError> {
+  web::block(move || -> Result<_> {
     let mut db = db.get()?;
     let transaction = db.transaction()?;
 
@@ -693,7 +700,7 @@ async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError
       order by `order` asc")?
     .query_map(params![request.id], |row| {
       Ok(row.get::<_, String>(0)?)
-    })?.filter_map(Result::ok).collect();
+    })?.filter_map(std::result::Result::ok).collect();
 
     images_ctr(
       "data/static/img/author",
@@ -719,18 +726,18 @@ async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError
   }).await?;
 
   Ok(json!({
-    "result": WebError::Success.into(): u8
+    "result": Opcode::Success as u8
   }))
 }
 
 ///author/delete
-async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
+async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue> {
   #[derive(Serialize, Deserialize)] struct Request {
     id: u32
   };
   let request: Request = from_json(post_data)?;
 
-  web::block(move || -> Result<(), WebError> {
+  web::block(move || -> Result<_> {
     let mut db = db.get()?;
     let transaction = db.transaction()?;
     // remove images
@@ -740,7 +747,7 @@ async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
         "select `hash` from `author_image` where `author_id` = :author_id")?;
       let images = stmt.query_map(params![request.id], |row| {
         Ok(row.get::<_, String>(0)?)
-      })?.filter_map(Result::ok);
+      })?.filter_map(std::result::Result::ok);
       for image in images {
         for p in 0..=2 {
           let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
@@ -757,7 +764,7 @@ async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
   }).await?;
 
   Ok(json!({
-    "result": WebError::Success.into(): u8
+    "result": Opcode::Success as u8
   }))
 }
 
@@ -765,16 +772,15 @@ async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue, WebErr
 async fn store_image(mut post_data: JsonValue, db: DB, sizes: Vec<(u32, u32)>) -> JsonValue {
   use image::{ImageFormat, imageops::FilterType};
 
-  web::block( move || -> Result<JsonValue, WebError> {
+  web::block( move || -> Result<JsonValue> {
     let mut db = db.get()?;
     let transaction = db.transaction()?;
-    const ERR: WebError = WebError::InvalidRequest;
 
     let image = {
       let image_b64 = json_path::<String>(&mut post_data, "/data")?;
-      if image_b64.get(0..=22) != Some("data:image/jpeg;base64,") { return Err(ERR); }
+      if image_b64.get(0..=22) != Some("data:image/jpeg;base64,") { bail!(ErrorKind::InvalidRequest); }
       image::load_from_memory_with_format(
-        base64::decode( image_b64.get(23..).ok_or(ERR)?)?.as_slice(),
+        base64::decode( image_b64.get(23..).ok_or(ErrorKind::InvalidRequest)?)?.as_slice(),
         ImageFormat::Jpeg
       )?
     };
@@ -801,7 +807,7 @@ async fn store_image(mut post_data: JsonValue, db: DB, sizes: Vec<(u32, u32)>) -
       let images = transaction.prepare("select `id` from `tmp_store_image` where `timestamp` < :timestamp")?
        .query_map(params![expired as i64], |row| {
         Ok(row.get(0)?)
-      })?.filter_map(Result::ok).collect(): Vec<String>;
+      })?.filter_map(std::result::Result::ok).collect(): Vec<String>;
       for image in images {
         for p in 0..=2 {
           std::fs::remove_file(format!("data/tmp/{}_p{}.jpg", image, p)).ok();
@@ -812,20 +818,20 @@ async fn store_image(mut post_data: JsonValue, db: DB, sizes: Vec<(u32, u32)>) -
       transaction.commit()?;
     }
     Ok(json!({
-      "result": WebError::Success.into(): u8,
+      "result": Opcode::Success as u8,
       "temp_id": temp_id
     }))
   }).await
     .unwrap_or_else(|e| {
       eprintln!("{:?}", e);
       json!({
-        "result": WebError::from(e).into(): u8
+        "result": Opcode::Success as u8
       })
     })
 }
 
 ///search/author_names
-async fn search_author_names(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
+async fn search_author_names(post_data: JsonValue, db: DB) -> Result<JsonValue> {
   #[derive(Deserialize)] struct Request {
     term: String
   };
@@ -834,7 +840,7 @@ async fn search_author_names(post_data: JsonValue, db: DB) -> Result<JsonValue, 
     id: u32,
     name: String
   };
-  let names = web::block(move || -> Result<Vec<Row>, WebError> {
+  let names = web::block(move || -> Result<_> {
     let db = db.get()?;
     let mut stmt = db.prepare("
       select id,
@@ -848,7 +854,7 @@ async fn search_author_names(post_data: JsonValue, db: DB) -> Result<JsonValue, 
         id: row.get(0)?,
         name: row.get(1)?,
       })
-    })?.filter_map(Result::ok).collect();
+    })?.filter_map(std::result::Result::ok).collect();
     Ok(names)
   }).await?;
 
@@ -863,7 +869,7 @@ async fn search_author_names(post_data: JsonValue, db: DB) -> Result<JsonValue, 
 }
 
 ///search/tag_names
-async fn search_tag_names(post_data: JsonValue, db: DB) -> Result<JsonValue, WebError> {
+async fn search_tag_names(post_data: JsonValue, db: DB) -> Result<JsonValue> {
   #[derive(Deserialize)] struct Request {
     term: String
   };
@@ -871,7 +877,7 @@ async fn search_tag_names(post_data: JsonValue, db: DB) -> Result<JsonValue, Web
   struct Row {
     name: String
   };
-  let names = web::block(move || -> Result<Vec<Row>, WebError> {
+  let names = web::block(move || -> Result<_> {
     let db = db.get()?;
     let mut stmt = db.prepare("
       select name
@@ -883,7 +889,7 @@ async fn search_tag_names(post_data: JsonValue, db: DB) -> Result<JsonValue, Web
       Ok(Row {
         name: row.get(0)?,
       })
-    })?.filter_map(Result::ok).collect();
+    })?.filter_map(std::result::Result::ok).collect();
     Ok(tags)
   }).await?;
 

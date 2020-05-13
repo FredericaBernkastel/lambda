@@ -4,19 +4,19 @@ use serde_json::json;
 use path_tree::PathTree;
 use strum::IntoEnumIterator;
 use num_traits::FromPrimitive;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use lazy_static::lazy_static;
 use runtime_fmt::{rt_format, rt_format_args};
 use rusqlite::params;
 use crate::{
-  web_error::WebError,
+  error,
   util,
   config::Config,
   model,
   DB
 };
 
-pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> Result<Markup, WebError> {
+pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> error::Result<Markup> {
   let root_url = config.web.root_url.as_str();
   let cors_h = util::gen_cors_hash(util::get_timestamp(), config);
   lazy_static! {
@@ -26,10 +26,12 @@ pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User
         "/login",
         "/home",
         "/graffitis",
+        "/graffitis/page/:page",
         "/graffiti/add",
         "/graffiti/:id",
         "/graffiti/:id/edit",
         "/authors",
+        "/authors/page/:page",
         "/author/add",
         "/author/:id",
         "/author/:id/edit",
@@ -59,14 +61,21 @@ pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User
           };
           match path {
             "/home" => include!("templates/home.rs"),
-            "/graffitis" => include!("templates/graffitis.rs"),
+
+            "/graffitis" => include!("templates/graffitis.rs"),// -------------
+            "/graffitis/page/:page" => include!("templates/graffitis.rs"),// --
+
             "/graffiti/add" => include!("templates/graffiti-add.rs"),// -------
             "/graffiti/:id" => include!("templates/graffiti.rs"),//           |
             "/graffiti/:id/edit" => include!("templates/graffiti-add.rs"),// --
-            "/authors" => include!("templates/authors.rs"),
+
+            "/authors" => include!("templates/authors.rs"),// -----------------
+            "/authors/page/:page" => include!("templates/authors.rs"),// ------
+
             "/author/add" => include!("templates/author-add.rs"),//------------
             "/author/:id" => include!("templates/author.rs"),//               |
             "/author/:id/edit" => include!("templates/author-add.rs"),// ------
+
             "/tags" => include!("templates/tags.rs"),
             "/help" => include!("templates/help.rs"),
             _ => unreachable!()
@@ -108,25 +117,71 @@ pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User
   })
 }
 
-fn navigation(config: &Config) -> Markup {
-  html! {
-    .navigation {
-      .n_back { span {
-        svg {use xlink:href={ (config.web.root_url) "static/img/sprite.svg#chevron-circle-left" } {  }} "prev"
-      } }
-      .navi_link {
-        span { "1" }
-        @for i in 2..11 {
-          a href="#" { (i) }
-        }
-        span.nav_ext { "..." }
-        a href="#" { "18" }
-      }
-      .n_next { a href="#" {
-        "next" svg {use xlink:href={ (config.web.root_url) "static/img/sprite.svg#chevron-circle-right" } {  }}
-      } }
-    }
+fn navigation(config: &Config, link_tpl: &str, current_page: i64, per_page: i64, total: i64) -> error::Result<Markup> {
+  let total_pages = (total as f64 / per_page as f64).ceil() as i64;
+  let radius = 4;
+  let prev_page = match current_page - 1 {
+    x if x > 0 => Some(x),
+    _ => None
+  };
+  let next_page = match current_page + 1 {
+    x if x <= total_pages => Some(x),
+    _ => None
+  };
+  let mut pages = VecDeque::<Option<i64>>::new();
+  (current_page - radius ..= current_page + radius)
+    .filter(|x| *x > 0 && *x <= total_pages)
+    .for_each(|x| pages.push_back(Some(x)));
+  match current_page - radius - 1 {
+    1 => vec![Some(1)],
+    x if x > 1 => vec![Some(1), None],
+    _ => vec![]
   }
+    .into_iter()
+    .rev()
+    .for_each(|x| pages.push_front(x));
+  match -current_page - radius + total_pages {
+    1 => vec![Some(total_pages)],
+    x if x > 1 => vec![None, Some(total_pages)],
+    _ => vec![]
+  }
+    .into_iter()
+    .for_each(|x| pages.push_back(x));
+
+  let link_fmt = |page| rt_format!(link_tpl, config.web.root_url, page)
+    .map_err(|_| "invalid format template");
+
+  Ok(html! {
+    .navigation {
+      .n_back {
+        @let svg = html!{ svg {use xlink:href={ (config.web.root_url) "static/img/sprite.svg#chevron-circle-left" } {  }} };
+        @match prev_page {
+          Some(page) => a href=(link_fmt(page)?) { (svg) "prev" },
+          None => span { (svg) "prev" }
+        }
+      }
+      .navi_link {
+        @for page in pages {
+          @match page {
+            Some(page) =>
+              @if page != current_page {
+                a href=(link_fmt(page)?) { (page) }
+              } @else {
+                span { (page) }
+              },
+            None => { span.nav_ext { "..." } }
+          }
+        }
+      }
+      .n_next {
+        @let svg = html!{ svg {use xlink:href={ (config.web.root_url) "static/img/sprite.svg#chevron-circle-right" } {  }} };
+        @match next_page {
+          Some(page) => a href=(link_fmt(page)?) { "next" (svg) },
+          None => span { "next" (svg) }
+        }
+      }
+    }
+  })
 }
 
 fn mar_image(hash: Option<&str>, path_template: &str, config: &Config) -> Markup {

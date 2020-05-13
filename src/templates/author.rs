@@ -21,7 +21,7 @@
   ) = web::block({
     let db = db.get()?;
 
-    move || -> Result<_, WebError> {
+    move || -> error::Result<_> {
       Ok((
         // author
         db.query_row("

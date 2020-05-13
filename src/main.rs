@@ -4,7 +4,7 @@
 #![feature(type_ascription)]
 
 mod model;
-mod web_error;
+mod error;
 mod config;
 mod auth;
 mod util;
@@ -20,11 +20,11 @@ type DB = web::Data<r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>>;
 type Config = web::Data<config::Config>;
 
 #[get("/views/{uri:.+}")]
-async fn sv_views(uri: web::Path<String>, db: DB, config: Config, session: Session) -> Result<HttpResponse> {
+async fn sv_views(uri: web::Path<String>, db: DB, config: Config, session: Session) -> Result<HttpResponse, error::Error> {
   let t0 = std::time::Instant::now();
   let uri = util::strip_slashes(uri.to_string());
 
-  let user = auth::get_user(db.clone(), &session).await;
+  let user = auth::get_user(db.clone(), &session).await?;
   if user.is_none() && (uri != "/login") { return Ok(util::redirect("views/login", &config)); };
   if user.is_some() && (uri == "/login") { return Ok(util::redirect("views/home",  &config)); };
 
@@ -33,22 +33,18 @@ async fn sv_views(uri: web::Path<String>, db: DB, config: Config, session: Sessi
       .await
       .map(|res| HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body(res.into_string()))
-      .map_err(|e| {
-        eprintln!("Error: {:?}", e);
-        HttpResponse::InternalServerError().finish()
-      })?;
+        .body(res.into_string()))?;
 
   println!("profiling: {:?}", std::time::Instant::now().duration_since(t0));
   Ok(res)
 }
 
 #[post("/rpc/{uri:.+}")]
-async fn sv_rpc(uri: web::Path<String>, payload: web::Payload, db: DB, config: Config, session: Session) -> Result<HttpResponse, HttpResponse> {
+async fn sv_rpc(uri: web::Path<String>, payload: web::Payload, db: DB, config: Config, session: Session) -> Result<HttpResponse, error::Error> {
   let t0 = std::time::Instant::now();
   let uri = util::strip_slashes(uri.to_string());
 
-  let user = auth::get_user(db.clone(), &session).await;
+  let user = auth::get_user(db.clone(), &session).await?;
   if user.is_none() && (uri != "/auth/login") { return Ok(HttpResponse::Unauthorized().finish()); };
 
   // parse into untyped
@@ -56,15 +52,11 @@ async fn sv_rpc(uri: web::Path<String>, payload: web::Payload, db: DB, config: C
     util::read_payload(payload, config.get_ref())
         .await?
         .as_ref()
-  ).map_err(|e| e.to_string())?;
+  )?;
 
   let res = rpc::main(uri, post_data, db, config.get_ref(), user, session)
     .await
-    .map(|res| HttpResponse::Ok().json(res))
-    .map_err(|e| {
-      eprintln!("Error: {:?}", e);
-      HttpResponse::Forbidden().body(e.to_string())
-    });
+    .map(|res| HttpResponse::Ok().json(res));
 
   println!("profiling: {:?}", std::time::Instant::now().duration_since(t0));
   res
