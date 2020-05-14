@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use crate::error::Result;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -19,11 +20,11 @@ pub struct WebConfig {
   pub max_request_size: u32
 }
 
-pub fn load() -> Config {
-  let path = "data/config.toml";
-  std::fs::read_to_string(path)
-    .map_err(|e| e.to_string())
-    .and_then(|file| toml::from_str(&file)
-      .map_err(|e| e.to_string()))
-    .unwrap_or_else(|e| panic!("Unable to load \"{}\"\n\n{}", path, e))
+pub fn load() -> Result<Config> {
+  const PATH: &str = "data/config.toml";
+  Ok(
+    toml::from_str(
+      &std::fs::read_to_string(PATH)?
+    )?
+  )
 }

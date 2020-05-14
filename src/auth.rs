@@ -9,7 +9,7 @@ use crate::{
   util,
   config::Config,
   model,
-  DB
+  web::DB
 };
 
 pub fn password_hash(password: &str, config: &Config) -> String {
@@ -26,7 +26,7 @@ pub fn gen_ssid() -> String {
 
 pub async fn check_session(ssid: String, db: DB) -> Result<Option<model::User>> {
   //let ssid = ssid.clone();
-  if ssid.len() != 64 { return Ok(None); }
+  if ssid.len() != 64 { bail!(ErrorKind::InvalidRequest) }
 
   let res = web::block(move || -> Result<Option<model::User>> {
     let db = db.get()?;
@@ -53,9 +53,9 @@ pub async fn check_session(ssid: String, db: DB) -> Result<Option<model::User>> 
         login: row.get(1)?,
         password: row.get(2)?,
       })
-    }).optional()?;
+    })?;
 
-    Ok(user)
+    Ok(Some(user))
   }).await?;
   Ok(res)
 }
@@ -83,10 +83,10 @@ pub async fn login(login: &str, password: &str, db: DB, config: &Config, session
   // generate ssid
   let ssid = gen_ssid();
   let expires = timestamp + 2592000; // 1 month
-  let ssid_cookie = ssid.clone();
 
   web::block({
     let db = db.clone();
+    let ssid = ssid.clone();
     move || -> Result<_> {
       let mut db = db.get()?;
       let transaction = db.transaction()?;
@@ -115,7 +115,7 @@ pub async fn login(login: &str, password: &str, db: DB, config: &Config, session
   }).await?;
 
   // set session cookie
-  session.set("ssid", ssid_cookie)
+  session.set("ssid", ssid)
     .map_err(|_| "unable to set cookie")?;
 
   Ok(())

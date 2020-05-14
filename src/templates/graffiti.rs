@@ -5,7 +5,7 @@
     name: String
   }
 
-  let id: u32 = data.get("id").ok_or("")?.parse()?;
+  let id: u32 = data.get("id")?.parse()?;
 
   let ((graffiti, location), images, authors, tags) = web::block({
     let db = db.clone().get()?;

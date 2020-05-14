@@ -1,9 +1,10 @@
 use std::process::exit;
 use clap::{clap_app, value_t};
 use rusqlite::params;
-use crate::auth;
+use error_chain::bail;
+use crate::{auth, error::Result};
 
-pub fn load(config: &crate::config::Config, db: &r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>){
+pub fn load(config: &crate::config::Config, db: &r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>) -> Result<()> {
 
   let matches = clap_app!(lambda =>
     (@subcommand register =>
@@ -23,35 +24,29 @@ help        print help message
 "#)
   .get_matches();
 
-  let db = db.get().unwrap();
+  let db = db.get()?;
 
-  (|| -> Result<(), Box<dyn std::error::Error>> {
-    match matches.subcommand() {
+  match matches.subcommand() {
 
-      /*** register ***/
-      ("register", Some(command)) => {
-        let login = value_t!(command, "user", String)?;
-        let password = value_t!(command, "password", String)?;
+    /*** register ***/
+    ("register", Some(command)) => {
+      let login = value_t!(command, "user", String)?;
+      let password = value_t!(command, "password", String)?;
 
-        if db.prepare("select `id` from `users` where `login` = :login")?
-          .exists(params![login])? {
-          return Err("error: user already exists".into());
-        }
+      if db.prepare("select `id` from `users` where `login` = :login")?
+        .exists(params![login])? {
+        bail!("user already exists");
+      }
 
-        let hash = auth::password_hash(&password, config);
+      let hash = auth::password_hash(&password, config);
 
-        db.prepare("insert into `users` (`login`, `password`) values (:login, :password)")?
-          .insert(params![login, hash])?;
+      db.prepare("insert into `users` (`login`, `password`) values (:login, :password)")?
+        .insert(params![login, hash])?;
 
-        exit(0);
-      },
-
-      _ => ()
-    };
-    Ok(())
-  })()
-    .map_err(|e| {
-      eprintln!("{}", e);
       exit(0);
-    }).ok();
+    },
+
+    _ => ()
+  };
+  Ok(())
 }

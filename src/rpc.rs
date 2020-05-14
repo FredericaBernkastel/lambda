@@ -1,6 +1,6 @@
 use path_tree::PathTree;
 use serde_json::{Value as JsonValue, json, from_value as from_json};
-use serde::{Serialize, Deserialize};
+use serde::Deserialize;
 use actix_web::web;
 use actix_session::Session;
 use regex::Regex;
@@ -14,7 +14,7 @@ use crate::{
   config::Config,
   auth,
   model,
-  DB
+  web::DB
 };
 
 #[repr(u8)]
@@ -22,7 +22,7 @@ enum Opcode {
   Success = 0,
   //InternalError = 100,
   InvalidLogin = 101,
-  //InvalidRequest = 102
+  InvalidRequest = 102
 }
 
 pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config, user: Option<model::User>, session: Session) -> Result<String> {
@@ -76,11 +76,11 @@ pub async fn main(uri: String, mut post_data: JsonValue, db: DB, config: &Config
             "/graffiti/add" => graffiti_add(post_data, db).await?,
             "/graffiti/edit" => graffiti_edit(post_data, db).await?,
             "/graffiti/delete" => graffiti_delete(post_data, db).await?,
-            "/graffiti/store_image" => store_image(post_data, db, vec![(480, 360), (100, 75)]).await,
+            "/graffiti/store_image" => store_image(post_data, db, vec![(480, 360), (100, 75)]).await?,
             "/author/add" => author_add(post_data, db).await?,
             "/author/edit" => author_edit(post_data, db).await?,
             "/author/delete" => author_delete(post_data, db).await?,
-            "/author/store_image" => store_image(post_data, db, vec![(170, 226), (56, 75)]).await,
+            "/author/store_image" => store_image(post_data, db, vec![(170, 226), (56, 75)]).await?,
             "/search/author_names" => search_author_names(post_data, db).await?,
             "/search/tag_names" => search_tag_names(post_data, db).await?,
             _ => unreachable!()
@@ -117,7 +117,7 @@ fn images_ctr(
   for image in &old_images {
     if !new_images.contains(image) {
       for p in 0..=2 {
-        let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
+        let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1)?, image, p);
         std::fs::remove_file(path)?;
       }
     }
@@ -129,7 +129,7 @@ fn images_ctr(
 
     for (id, image) in new_images.iter().enumerate() {
       if !old_images.contains(image) {
-        let prefix = image.get(0..=1).ok_or("")?;
+        let prefix = image.get(0..=1)?;
         std::fs::create_dir_all(format!("{}/{}", images_folder, prefix))?;
         for p in 0..=2 {
           let path = format!("{}/{}/{}_p{}.jpg", images_folder, prefix, image, p);
@@ -180,7 +180,7 @@ async fn auth_logout(db: DB, session: Session) -> Result<JsonValue> {
 
 ///graffiti/add
 async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
-  #[derive(Serialize, Deserialize)] struct Graffiti {
+  #[derive(Deserialize)] struct Graffiti {
     complaint_id: String,
     datetime: Option<i64>,
     shift_time: u8,
@@ -188,7 +188,7 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
     companions: u32,
     notes: String,
   };
-  #[derive(Serialize, Deserialize)] struct Location {
+  #[derive(Deserialize)] struct Location {
     country: String,
     city: String,
     street: String,
@@ -197,11 +197,11 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
     gps_long: Option<f64>,
     gps_lat: Option<f64>
   };
-  #[derive(Serialize, Deserialize)] struct Author {
+  #[derive(Deserialize)] struct Author {
     id: u32,
     indubitable: bool
   }
-  #[derive(Serialize, Deserialize)] struct Request {
+  #[derive(Deserialize)] struct Request {
     graffiti: Graffiti,
     location: Location,
     authors: Vec<Author>,
@@ -209,7 +209,7 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
     tags: Vec<String>
   };
   let mut request: Request = from_json(post_data)?;
-  request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
+  request.authors.sort_unstable_by(|a, b| a.id.cmp(&b.id));
   request.authors.dedup_by(|a, b| a.id == b.id);
 
   let graffiti_id = web::block(move || -> Result<_> {
@@ -354,7 +354,7 @@ async fn graffiti_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
 
 ///graffiti/edit
 async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
-  #[derive(Serialize, Deserialize)] struct Graffiti {
+  #[derive(Deserialize)] struct Graffiti {
     id: u32,
     complaint_id: String,
     datetime: Option<i64>,
@@ -363,7 +363,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
     companions: u32,
     notes: String,
   };
-  #[derive(Serialize, Deserialize)] struct Location {
+  #[derive(Deserialize)] struct Location {
     country: String,
     city: String,
     street: String,
@@ -372,11 +372,11 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
     gps_long: Option<f64>,
     gps_lat: Option<f64>
   };
-  #[derive(Serialize, Deserialize)] struct Author {
+  #[derive(Deserialize)] struct Author {
     id: u32,
     indubitable: bool
   }
-  #[derive(Serialize, Deserialize)] struct Request {
+  #[derive(Deserialize)] struct Request {
     graffiti: Graffiti,
     location: Location,
     authors: Vec<Author>,
@@ -384,7 +384,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
     tags: Vec<String>
   };
   let mut request: Request = from_json(post_data)?;
-  request.authors.sort_unstable_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
+  request.authors.sort_unstable_by(|a, b| a.id.cmp(&b.id));
   request.authors.dedup_by(|a, b| a.id == b.id);
 
   web::block(move || -> Result<_> {
@@ -525,7 +525,7 @@ async fn graffiti_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
 
 ///graffiti/delete
 async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue> {
-  #[derive(Serialize, Deserialize)] struct Request {
+  #[derive(Deserialize)] struct Request {
     id: u32
   };
   let request: Request = from_json(post_data)?;
@@ -543,7 +543,7 @@ async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue> {
       })?.filter_map(std::result::Result::ok);
       for image in images {
         for p in 0..=2 {
-          let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
+          let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1)?, image, p);
           std::fs::remove_file(path).ok();
         }
       }
@@ -567,7 +567,7 @@ async fn graffiti_delete(post_data: JsonValue, db: DB) -> Result<JsonValue> {
 
 ///author/add
 async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
-  #[derive(Serialize, Deserialize)] struct Request {
+  #[derive(Deserialize)] struct Request {
     name: String,
     age: Option<u32>,
     height: Option<u32>,
@@ -581,7 +581,7 @@ async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
 
   if request.name.is_empty() {
     return Ok(json!({
-      "result": Opcode::Success as u8
+      "result": Opcode::InvalidRequest as u8
     }))
   }
 
@@ -649,7 +649,7 @@ async fn author_add(post_data: JsonValue, db: DB) -> Result<JsonValue> {
 
 ///author/edit
 async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
-  #[derive(Serialize, Deserialize)] struct Request {
+  #[derive(Deserialize)] struct Request {
     id: u32,
     name: String,
     age: Option<u32>,
@@ -664,7 +664,7 @@ async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
 
   if request.name.is_empty() {
     return Ok(json!({
-      "result": Opcode::Success as u8
+      "result": Opcode::InvalidRequest as u8
     }))
   }
 
@@ -732,7 +732,7 @@ async fn author_edit(post_data: JsonValue, db: DB) -> Result<JsonValue> {
 
 ///author/delete
 async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue> {
-  #[derive(Serialize, Deserialize)] struct Request {
+  #[derive(Deserialize)] struct Request {
     id: u32
   };
   let request: Request = from_json(post_data)?;
@@ -750,7 +750,7 @@ async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue> {
       })?.filter_map(std::result::Result::ok);
       for image in images {
         for p in 0..=2 {
-          let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or("")?, image, p);
+          let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1)?, image, p);
           std::fs::remove_file(path).ok();
         }
       }
@@ -769,10 +769,10 @@ async fn author_delete(post_data: JsonValue, db: DB) -> Result<JsonValue> {
 }
 
 ///store_image
-async fn store_image(mut post_data: JsonValue, db: DB, sizes: Vec<(u32, u32)>) -> JsonValue {
+async fn store_image(mut post_data: JsonValue, db: DB, sizes: Vec<(u32, u32)>) -> Result<JsonValue> {
   use image::{ImageFormat, imageops::FilterType};
 
-  web::block( move || -> Result<JsonValue> {
+  let temp_id = web::block( move || -> Result<_> {
     let mut db = db.get()?;
     let transaction = db.transaction()?;
 
@@ -817,17 +817,13 @@ async fn store_image(mut post_data: JsonValue, db: DB, sizes: Vec<(u32, u32)>) -
 
       transaction.commit()?;
     }
-    Ok(json!({
-      "result": Opcode::Success as u8,
-      "temp_id": temp_id
-    }))
-  }).await
-    .unwrap_or_else(|e| {
-      eprintln!("{:?}", e);
-      json!({
-        "result": Opcode::Success as u8
-      })
-    })
+    Ok(temp_id)
+  }).await?;
+
+  Ok(json!({
+    "result": Opcode::Success as u8,
+    "temp_id": temp_id
+  }))
 }
 
 ///search/author_names

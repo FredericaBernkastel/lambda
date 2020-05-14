@@ -8,12 +8,13 @@ use std::collections::{HashMap, VecDeque};
 use lazy_static::lazy_static;
 use runtime_fmt::{rt_format, rt_format_args};
 use rusqlite::params;
+use error_chain::bail;
 use crate::{
   error,
   util,
   config::Config,
   model,
-  DB
+  web::DB
 };
 
 pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> error::Result<Markup> {
@@ -50,14 +51,14 @@ pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User
         .into_iter()
         .map(|(arg, value)| (arg.to_string(), value.to_string())).
         collect();
-      __path_t = (path.clone(), data.clone());
+      __path_t = (path, data.clone());
 
       match path {
         "/login" => include!("templates/login.rs"),
         _ => {
           let user = match user {
             Some(user) => user,
-            None => return Err("unauthorized".into())
+            None => bail!("unauthorized")
           };
           match path {
             "/home" => include!("templates/home.rs"),
@@ -83,8 +84,16 @@ pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User
         }
       }
     },
-    None => return Err("route not found".into())
+    None => bail!("route not found")
   };
+
+  let js_glob = json!({
+    "path_t": __path_t.0,
+    "data": __path_t.1,
+    "root_url": root_url,
+    "rpc": format!("{}rpc/", root_url),
+    "cors_h": cors_h
+  });
 
   Ok(html! {
     (DOCTYPE)
@@ -101,13 +110,7 @@ pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User
         title { "Graffiti database" }
 
         script type="text/javascript" {
-          "var __glob = " (PreEscaped(json!({
-            "path_t": __path_t.0,
-            "data": __path_t.1,
-            "root_url": root_url,
-            "rpc": format!("{}rpc/", root_url),
-            "cors_h": cors_h
-          }).to_string())) ";"
+          "var __glob = " (PreEscaped(js_glob.to_string())) ";"
         }
       }
       body {
@@ -184,14 +187,15 @@ fn navigation(config: &Config, link_tpl: &str, current_page: i64, per_page: i64,
   })
 }
 
-fn mar_image(hash: Option<&str>, path_template: &str, config: &Config) -> Markup {
+fn mar_image(hash: Option<&str>, path_template: &str, config: &Config) -> error::Result<Markup> {
   let root_url = &config.web.root_url;
   let src = match hash {
-    Some(hash) => rt_format!(path_template, root_url, hash.get(0..=1).unwrap_or(""), hash).unwrap_or("".into()),
+    Some(hash) => rt_format!(path_template, root_url, hash.get(0..=1)?, hash)
+      .map_err(|_| "invalid format template")?,
     None => "{src}".into()
   };
 
-  html! {
+  Ok(html! {
     .image data-id=(hash.unwrap_or("")) {
       img src=(src) {  }
       .controls {
@@ -205,5 +209,5 @@ fn mar_image(hash: Option<&str>, path_template: &str, config: &Config) -> Markup
         svg { title { "uploading" } use xlink:href={ (root_url) "static/img/sprite.svg#spinner" }{}}
       }
     }
-  }
+  })
 }

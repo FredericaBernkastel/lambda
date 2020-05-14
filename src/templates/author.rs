@@ -6,7 +6,7 @@
     thumbnail: Option<String>
   }
 
-  let id: u32 = data.get("id").ok_or("")?.parse()?;
+  let id: u32 = data.get("id")?.parse()?;
 
   let (
 

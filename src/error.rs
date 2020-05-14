@@ -1,7 +1,4 @@
 use error_chain::error_chain;
-use actix_web::{ HttpResponse, error::BlockingError };
-use actix_http::Response;
-use actix_http::http::StatusCode;
 
 error_chain! {
   foreign_links {
@@ -12,10 +9,12 @@ error_chain! {
     Base64DecodeError(base64::DecodeError);
     ImageError(image::error::ImageError);
     IoError(std::io::Error);
+    TomlError(toml::de::Error);
+    ClapError(clap::Error);
   }
 
   errors {
-    ActixError
+    GenericError(e: String)
     NoneError(e: std::option::NoneError)
 
     InvalidLogin
@@ -23,14 +22,10 @@ error_chain! {
   }
 }
 
-impl<T> From<BlockingError<T>> for Error
+impl<T> From<actix_web::error::BlockingError<T>> for Error
   where T: std::fmt::Debug {
-  fn from(e: BlockingError<T>) -> Self {
-    let kind = match e {
-      BlockingError::Error(_) => ErrorKind::ActixError,
-      BlockingError::Canceled => ErrorKind::ActixError,
-    };
-    Error::from_kind(kind)
+  fn from(e: actix_web::error::BlockingError<T>) -> Self {
+    Error::from_kind(ErrorKind::GenericError(format!("{:?}", e)))
   }
 }
 
@@ -41,8 +36,8 @@ impl From<std::option::NoneError> for Error {
 }
 
 impl From<actix_http::error::PayloadError> for Error {
-  fn from(_: actix_http::error::PayloadError) -> Self {
-    Error::from_kind(ErrorKind::ActixError)
+  fn from(e: actix_http::error::PayloadError) -> Self {
+    Error::from_kind(ErrorKind::GenericError(format!("{:?}", e)))
   }
 }
 
@@ -64,10 +59,10 @@ pub fn display(error: &Error) -> String {
 
 
 impl actix_http::error::ResponseError for Error {
-  fn status_code(&self) -> StatusCode {
-    StatusCode::INTERNAL_SERVER_ERROR
+  fn status_code(&self) -> actix_http::http::StatusCode {
+    actix_http::http::StatusCode::INTERNAL_SERVER_ERROR
   }
-  fn error_response(&self) -> Response {
-    HttpResponse::InternalServerError().body(display(self))
+  fn error_response(&self) -> actix_http::Response {
+    actix_web::HttpResponse::InternalServerError().body(display(self))
   }
 }
