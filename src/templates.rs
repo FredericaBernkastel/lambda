@@ -12,14 +12,14 @@ use error_chain::bail;
 use crate::{
   error,
   util,
-  config::Config,
   model,
-  web::DB
+  web::DB,
+  web::Config
 };
 
-pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User>) -> error::Result<Markup> {
+pub async fn main(uri: String, db: DB, config: Config, user: Option<model::User>) -> error::Result<Markup> {
   let root_url = config.web.root_url.as_str();
-  let cors_h = util::gen_cors_hash(util::get_timestamp(), config);
+  let cors_h = util::gen_cors_hash(util::get_timestamp(), &config);
   lazy_static! {
     static ref PATH_TREE: PathTree::<&'static str> = {
       let mut tmp = PathTree::<&str>::new();
@@ -120,8 +120,13 @@ pub async fn main(uri: String, db: DB, config: &Config, user: Option<model::User
   })
 }
 
-fn navigation(config: &Config, link_tpl: &str, current_page: i64, per_page: i64, total: i64) -> error::Result<Markup> {
+fn mar_navigation(config: &Config, link_tpl: &str, current_page: i64, per_page: i64, total: i64) -> error::Result<Markup> {
   let total_pages = (total as f64 / per_page as f64).ceil() as i64;
+
+  if current_page < 1 || current_page > total_pages {
+    bail!(error::ErrorKind::InvalidRequest);
+  }
+
   let radius = 4;
   let prev_page = match current_page - 1 {
     x if x > 0 => Some(x),

@@ -365,6 +365,23 @@ $(function(){
     });
   }
 
+  /* /graffitis           
+   * /graffitis/page/:page          
+   * ##########################################*/
+  if (__path_t === '/graffitis' || __path_t === '/graffitis/page/:page') {
+    $(document)
+      .on('keydown', null, 'left', function(){
+        var link = $('.page-graffitis .navigation .n_back a');
+        if(link.length)
+          link[0].click()
+      })
+      .on('keydown', null, 'right', function(){
+        var link = $('.page-graffitis .navigation .n_next a');
+        if(link.length)
+          link[0].click()
+      })
+  }
+
   /* /graffiti/add    
    * /graffiti/:id/edit                
    * ##########################################*/
@@ -630,6 +647,23 @@ $(function(){
         });
       });
     });
+  }
+
+  /* /authors           
+   * /authors/page/:page          
+   * ##########################################*/
+  if (__path_t === '/authors' || __path_t === '/authors/page/:page') {
+    $(document)
+      .on('keydown', null, 'left', function(){
+        var link = $('.page-authors .navigation .n_back a');
+        if(link.length)
+          link[0].click()
+      })
+      .on('keydown', null, 'right', function(){
+        var link = $('.page-authors .navigation .n_next a');
+        if(link.length)
+          link[0].click()
+      })
   }
 
   /* /author/add    

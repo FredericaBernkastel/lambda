@@ -26,7 +26,7 @@ async fn sv_views(uri: web::Path<String>, db: DB, config: Config, session: Sessi
   if user.is_some() && (uri == "/login") { return Ok(util::redirect("views/home",  &config)); };
 
   let res =
-    templates::main(uri, db, config.get_ref(), user)
+    templates::main(uri, db, config, user)
       .await
       .map(|res| HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")

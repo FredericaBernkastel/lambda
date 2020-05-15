@@ -38,7 +38,7 @@
                 id: row.get(0)?,
                 complaint_id: row.get(1)?,
                 datetime: row.get(2)?,
-                shift_time: model::ShiftTime::from_u8(row.get(3)?),
+                shift_time: row.get::<_, Option<u8>>(3)?.map(model::ShiftTime::from_u8).flatten(),
                 intervening: row.get(4)?,
                 companions: row.get(5)?,
                 notes: row.get(6)?,

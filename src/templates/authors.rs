@@ -11,37 +11,63 @@
 
   let page: i64 = data.get("page").unwrap_or(&"1".into()).parse()?;
 
-  let authors = web::block({
+  let (authors, mar_navigation) = web::block({
     let db = db.get()?;
+    let config = config.clone();
     move || -> error::Result<_> {
-      Ok(
+      let total = db.query_row("select count(*) from author", params![], |row| {
+        Ok(row.get::<_, u32>(0)?)
+      })?;
+      Ok((
+
+        // authors
         db.prepare("
-          select a.id as `0`,
-                 a.name as `1`,
-                 a.age as `2`,
-                 a.home_city as `3`,
-                 a.views as `4`,
-                 b.hash as `5`,
-                 count(c.author_id) as `6` 
-            from author a
-                 left join author_image b on b.author_id = a.id and 
-                                             b.`order` = 0
-                 left join graffiti_author c on c.author_id = a.id
-           group by a.id
-           order by a.id desc
-           limit 0, 20"
-        )?.query_map(params![], |row| {
-          Ok(Row {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            age: row.get(2)?,
-            home_city: row.get(3)?,
-            views: row.get(4)?,
-            thumbnail: row.get(5)?,
-            graffiti: row.get(6)?,
-          })
-        })?.filter_map(Result::ok).collect(): Vec<Row>
-      )
+          with sub1 as (
+            select id,
+                   name,
+                   age,
+                   home_city,
+                   views
+              from author
+             order by id desc
+             limit :page * :limit, :limit
+          )
+          select sub1.id as `0`,
+                 sub1.name as `1`,
+                 sub1.age as `2`,
+                 sub1.home_city as `3`,
+                 sub1.views as `4`,
+                 a.hash as `5`,
+                 count(b.author_id) as `6`
+            from sub1
+                 left join author_image a on a.author_id = sub1.id and
+                                             a.`order` = 0
+                 left join graffiti_author b on b.author_id = sub1.id
+           group by sub1.id
+           order by sub1.id desc"
+        )?.query_map(
+          params![page - 1, config.web.rows_per_page],
+          |row| {
+            Ok(Row {
+              id: row.get(0)?,
+              name: row.get(1)?,
+              age: row.get(2)?,
+              home_city: row.get(3)?,
+              views: row.get(4)?,
+              thumbnail: row.get(5)?,
+              graffiti: row.get(6)?,
+            })
+        })?.filter_map(Result::ok).collect(): Vec<Row>,
+
+        // mar_navigation
+        mar_navigation(
+          &config,
+          "{}views/authors/page/{}",
+          page,
+          config.web.rows_per_page as i64,
+          total as i64
+        )?
+      ))
     }
   }).await?;
 
@@ -58,7 +84,7 @@
             }
           }
         }
-        (navigation(config, "{}views/authors/page/{}", page, 20, 360)?)
+        (mar_navigation)
         .table {
           .row.head {
             .col1 { "ID" }
@@ -89,7 +115,7 @@
             }
           }
         }
-        (navigation(config, "{}views/authors/page/{}", page, 20, 360)?)
+        (mar_navigation)
       }
     }
   }

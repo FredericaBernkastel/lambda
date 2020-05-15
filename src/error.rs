@@ -22,7 +22,7 @@ error_chain! {
 }
 
 impl<T> From<actix_web::error::BlockingError<T>> for Error
-  where T: error_chain::ChainedError {
+  where T: ChainedError {
   fn from(e: actix_web::error::BlockingError<T>) -> Self {
     match e {
       actix_web::error::BlockingError::Error(e) => Error::with_chain(e, ""),

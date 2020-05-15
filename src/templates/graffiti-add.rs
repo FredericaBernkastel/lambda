@@ -255,11 +255,11 @@
             p.box-title { "Images" }
             .img_upload_wrp {
               @for image in images {
-                (mar_image(Some(&image), "{}static/img/graffiti/{}/{}_p1.jpg", config)?)
+                (mar_image(Some(&image), "{}static/img/graffiti/{}/{}_p1.jpg", &config)?)
               }
               .image.add title="Upload images" {
                 svg {use xlink:href={ (root_url) "static/img/box-add.svg#box-add" }{}}
-                div data-type="x-template" data=(mar_image(None, "", config)?.into_string()) { }
+                div data-type="x-template" data=(mar_image(None, "", &config)?.into_string()) { }
               }
               input type="file" id="openfiledlg" multiple="multiple" accept=".jpg";
             }

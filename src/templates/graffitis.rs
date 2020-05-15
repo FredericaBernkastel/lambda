@@ -9,33 +9,54 @@
 
   let page: i64 = data.get("page").unwrap_or(&"1".into()).parse()?;
 
-  let graffitis = web::block({
+  let (graffitis, mar_navigation) = web::block({
     let db = db.get()?;
+    let config = config.clone();
 
     move || -> error::Result<_> {
-      let mut stmt = db.prepare("
-        select a.id as `0`,
-               a.datetime as `1`,
-               a.views as `2`,
-               b.city as `3`,
-               c.hash as `4`
-          from graffiti a
-               left join location b on b.graffiti_id = a.id
-               left join graffiti_image c on c.graffiti_id = a.id and 
-                                             c.`order` = 0
-         order by a.id desc
-         limit 0, 20"
+      let total = db.query_row("select count(*) from graffiti", params![], |row| {
+        Ok(row.get::<_, u32>(0)?)
+      })?;
+
+      let mar_navigation = mar_navigation(
+        &config,
+        "{}views/graffitis/page/{}",
+        page,
+        config.web.rows_per_page as i64,
+        total as i64
       )?;
-      let graffitis: Vec<Row> = stmt.query_map(params![], |row| {
-        Ok(Row {
-          id: row.get(0)?,
-          datetime: row.get(1)?,
-          views: row.get(2)?,
-          city: row.get(3)?,
-          thumbnail: row.get(4)?,
-        })
-      })?.filter_map(Result::ok).collect();
-      Ok(graffitis)
+
+      let mut stmt = db.prepare("
+        with sub1 as (
+          select id,
+                 datetime,
+                 views
+            from graffiti
+           order by id desc
+           limit :page * :limit, :limit
+        )
+        select sub1.id as `0`,
+               sub1.datetime as `1`,
+               sub1.views as `2`,
+               a.city as `3`,
+               b.hash as `4`
+          from sub1
+               left join location a on a.graffiti_id = sub1.id
+               left join graffiti_image b on b.graffiti_id = sub1.id and
+                                             b.`order` = 0"
+      )?;
+      let graffitis: Vec<Row> = stmt.query_map(
+        params![page - 1, config.web.rows_per_page],
+        |row| {
+          Ok(Row {
+            id: row.get(0)?,
+            datetime: row.get(1)?,
+            views: row.get(2)?,
+            city: row.get(3)?,
+            thumbnail: row.get(4)?,
+          })
+        })?.filter_map(Result::ok).collect();
+      Ok((graffitis, mar_navigation))
     }
   }).await?;
 
@@ -52,7 +73,7 @@
             }
           }
         }
-        (navigation(config, "{}views/graffitis/page/{}", page, 20, 360)?)
+        (mar_navigation)
         .table {
           .row.head {
             .col1 { "ID" }
@@ -79,7 +100,7 @@
             }
           }
         }
-        (navigation(config, "{}views/graffitis/page/{}", page, 20, 360)?)
+        (mar_navigation)
       }
     }
   }

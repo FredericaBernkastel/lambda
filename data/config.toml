@@ -6,3 +6,4 @@ db_path = "data/main.db"
 root_url = "/"
 secret_key = "CuC-#RHa('(wzD5'`~N_Q}`d8_~{7QV]"
 max_request_size = 13108224 # 10MB + 25% json overhead
+rows_per_page = 20
