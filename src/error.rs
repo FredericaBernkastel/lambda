@@ -1,4 +1,4 @@
-use error_chain::error_chain;
+use error_chain::{error_chain, ChainedError};
 
 error_chain! {
   foreign_links {
@@ -14,7 +14,6 @@ error_chain! {
   }
 
   errors {
-    GenericError(e: String)
     NoneError(e: std::option::NoneError)
 
     InvalidLogin
@@ -23,9 +22,12 @@ error_chain! {
 }
 
 impl<T> From<actix_web::error::BlockingError<T>> for Error
-  where T: std::fmt::Debug {
+  where T: error_chain::ChainedError {
   fn from(e: actix_web::error::BlockingError<T>) -> Self {
-    Error::from_kind(ErrorKind::GenericError(format!("{:?}", e)))
+    match e {
+      actix_web::error::BlockingError::Error(e) => Error::with_chain(e, ""),
+      actix_web::error::BlockingError::Canceled => "request cancelled".into()
+    }
   }
 }
 
@@ -37,7 +39,7 @@ impl From<std::option::NoneError> for Error {
 
 impl From<actix_http::error::PayloadError> for Error {
   fn from(e: actix_http::error::PayloadError) -> Self {
-    Error::from_kind(ErrorKind::GenericError(format!("{:?}", e)))
+    e.to_string().into()
   }
 }
 
@@ -47,11 +49,11 @@ pub fn display(error: &Error) -> String {
     .iter()
     .enumerate()
     .for_each(|(index, error)|
-      msg.push_str(format!("└> {} - {}", index, error).as_str())
+      msg.push_str(&format!("└> {} - {}", index, error))
     );
 
   if let Some(backtrace) = error.backtrace() {
-    msg.push_str(format!("{:?}", backtrace).as_str());
+    msg.push_str(&format!("\n\n{:?}", backtrace));
   }
   eprintln!("{}", msg);
   msg
