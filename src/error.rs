@@ -22,11 +22,13 @@ error_chain! {
 }
 
 impl<T> From<actix_web::error::BlockingError<T>> for Error
-  where T: ChainedError {
+where
+  T: ChainedError,
+{
   fn from(e: actix_web::error::BlockingError<T>) -> Self {
     match e {
       actix_web::error::BlockingError::Error(e) => Error::with_chain(e, ""),
-      actix_web::error::BlockingError::Canceled => "request cancelled".into()
+      actix_web::error::BlockingError::Canceled => "request cancelled".into(),
     }
   }
 }
@@ -48,9 +50,7 @@ pub fn display(error: &Error) -> String {
   error
     .iter()
     .enumerate()
-    .for_each(|(index, error)|
-      msg.push_str(&format!("└> {} - {}", index, error))
-    );
+    .for_each(|(index, error)| msg.push_str(&format!("└> {} - {}", index, error)));
 
   if let Some(backtrace) = error.backtrace() {
     msg.push_str(&format!("\n\n{:?}", backtrace));
@@ -58,7 +58,6 @@ pub fn display(error: &Error) -> String {
   eprintln!("{}", msg);
   msg
 }
-
 
 impl actix_http::error::ResponseError for Error {
   fn status_code(&self) -> actix_http::http::StatusCode {

@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use crate::error::Result;
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -18,14 +18,10 @@ pub struct WebConfig {
   pub root_url: String,
   pub secret_key: String,
   pub max_request_size: u32,
-  pub rows_per_page: u32
+  pub rows_per_page: u32,
 }
 
 pub fn load() -> Result<Config> {
   const PATH: &str = "data/config.toml";
-  Ok(
-    toml::from_str(
-      &std::fs::read_to_string(PATH)?
-    )?
-  )
+  Ok(toml::from_str(&std::fs::read_to_string(PATH)?)?)
 }

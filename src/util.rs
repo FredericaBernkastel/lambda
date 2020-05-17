@@ -1,52 +1,51 @@
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
-use sha2::{Sha256, Digest};
-use chrono::{Utc, prelude::DateTime};
-use maud::{html, Markup};
+use crate::{config::Config, error::Result};
+use chrono::{prelude::DateTime, Utc};
 use error_chain::bail;
-use crate::{
-  error::Result,
-  config::Config
-};
+use maud::{html, Markup};
+use sha2::{Digest, Sha256};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub fn get_timestamp() -> u64 {
   SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
 }
 
 pub fn format_timestamp(timestamp: u64, fmt: &str) -> String {
-  DateTime::<Utc>::from(
-    UNIX_EPOCH + Duration::from_secs(timestamp)
-  )
+  DateTime::<Utc>::from(UNIX_EPOCH + Duration::from_secs(timestamp))
     .format(fmt)
     .to_string()
 }
 
 pub fn gen_cors_hash(timestamp: u64, config: &Config) -> String {
-  format!("{:x},{}", Sha256::digest(
-    format!("{}{}", config.web.secret_key, timestamp).as_bytes()),
+  format!(
+    "{:x},{}",
+    Sha256::digest(format!("{}{}", config.web.secret_key, timestamp).as_bytes()),
     timestamp
   )
 }
 
 pub fn check_cors_hash(hash: &str, config: &Config) -> bool {
-  let tokens:Vec<&str> = hash.split(",").collect();
-  if tokens.len() != 2 { return false; }
-  let timestamp = match tokens[1].parse::<u64>(){
+  let tokens: Vec<&str> = hash.split(",").collect();
+  if tokens.len() != 2 {
+    return false;
+  }
+  let timestamp = match tokens[1].parse::<u64>() {
     Ok(t) => t,
-    Err(_) => return false
+    Err(_) => return false,
   };
-  gen_cors_hash(timestamp, config) == hash &&
-    timestamp < get_timestamp()
+  gen_cors_hash(timestamp, config) == hash && timestamp < get_timestamp()
 }
 
 pub fn markup_br(text: String) -> Markup {
   html! {
-    @for line in text.lines() {
-      (line) br;
-    }}
+  @for line in text.lines() {
+    (line) br;
+  }}
 }
 
 pub fn strip_slashes(mut uri: String) -> String {
-  if uri.ends_with('/') { uri.pop(); }
+  if uri.ends_with('/') {
+    uri.pop();
+  }
   "/".to_string() + &uri
 }
 
@@ -73,8 +72,9 @@ pub async fn read_payload(mut payload: actix_web::web::Payload, config: &Config)
 }
 
 pub fn json_path<'a, T: serde::Deserialize<'a>>(data: &'a mut serde_json::Value, path: &'a str) -> Result<T> {
-  let value = data.pointer_mut(path)
-      .map(serde_json::Value::take)
-      .ok_or(format!("unable to extract value \"{}\"", path))?;
+  let value = data
+    .pointer_mut(path)
+    .map(serde_json::Value::take)
+    .ok_or(format!("unable to extract value \"{}\"", path))?;
   Ok(T::deserialize(value)?)
 }

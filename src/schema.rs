@@ -1,18 +1,18 @@
-use strum_macros::{Display, EnumIter};
 use num_derive::FromPrimitive;
+use strum_macros::{Display, EnumIter};
 
 #[derive(Debug)]
 pub struct User {
   pub id: u32,
   pub login: String,
-  pub password: String
+  pub password: String,
 }
 
 #[derive(Debug)]
 pub struct Session {
   pub id: String,
   pub uid: u32,
-  pub expires: u64
+  pub expires: u64,
 }
 
 #[repr(u8)]
@@ -20,7 +20,7 @@ pub struct Session {
 pub enum ShiftTime {
   Morning = 0,
   Afternoon = 1,
-  Night = 2
+  Night = 2,
 }
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ pub struct Graffiti {
   pub intervening: String,
   pub companions: u32,
   pub notes: String,
-  pub views: u32
+  pub views: u32,
 }
 
 #[derive(Debug)]
@@ -44,17 +44,17 @@ pub struct Location {
   pub place: String,
   pub property: String,
   pub gps_long: Option<f64>,
-  pub gps_lat: Option<f64>
+  pub gps_lat: Option<f64>,
 }
 
 #[repr(u8)]
 #[derive(Display, Debug, Copy, Clone, PartialEq, FromPrimitive, EnumIter)]
 pub enum Handedness {
-  #[strum(serialize="Right handed")]
+  #[strum(serialize = "Right handed")]
   RightHanded = 0,
-  #[strum(serialize="Left handed")]
+  #[strum(serialize = "Left handed")]
   LeftHanded = 1,
-  #[strum(serialize="Ambidextrous")]
+  #[strum(serialize = "Ambidextrous")]
   Ambidextrous = 2,
 }
 
@@ -68,5 +68,5 @@ pub struct Author {
   pub home_city: String,
   pub social_networks: String,
   pub notes: String,
-  pub views: u32
+  pub views: u32,
 }

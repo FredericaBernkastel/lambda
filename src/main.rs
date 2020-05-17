@@ -2,15 +2,13 @@
 #![feature(str_strip)]
 #![feature(try_trait)]
 #![feature(type_ascription)]
+#![feature(stmt_expr_attributes)]
 
-mod model;
-mod error;
-mod config;
-mod auth;
-mod util;
 mod cli;
-mod rpc;
-mod templates;
+mod config;
+mod error;
+mod schema;
+mod util;
 mod web;
 
 fn main() {
@@ -25,10 +23,11 @@ fn main() {
     let manager = r2d2_sqlite::SqliteConnectionManager::file(&config.server.db_path);
     let db_pool = r2d2::Pool::new(manager)?;
 
-    cli::load(&config, &db_pool)?;
+    cli::load(&config, db_pool.clone())?;
 
     web::init(config, db_pool)?;
 
     Ok(())
-  })().unwrap();
+  })()
+  .unwrap();
 }
