@@ -11,6 +11,7 @@ pub struct Config {
 pub struct ServerConfig {
   pub bind_addr: String,
   pub db_path: String,
+  pub env_vars: Vec<[String; 2]>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

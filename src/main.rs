@@ -12,12 +12,13 @@ mod util;
 mod web;
 
 fn main() {
-  std::env::set_var("RUST_LOG", "actix_web=debug");
-  std::env::set_var("RUST_BACKTRACE", "1");
-  env_logger::init();
-
   (|| -> error::Result<_> {
     let config = config::load()?;
+    for [k, v] in &config.server.env_vars {
+      std::env::set_var(k, v);
+    }
+
+    env_logger::init();
 
     // r2d2 pool
     let manager = r2d2_sqlite::SqliteConnectionManager::file(&config.server.db_path);

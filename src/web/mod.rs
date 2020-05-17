@@ -1,7 +1,8 @@
 use crate::{config, error, util};
 use actix_session::{CookieSession, Session};
-use actix_web::{error::BlockingError, get, guard, middleware, post, web, App, HttpResponse, HttpServer, Result};
-use error_chain::bail;
+use actix_web::{
+  error::BlockingError, get, guard, middleware, post, web, App, HttpResponse, HttpServer, Result,
+};
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use serde_json::Value as JsonValue;
@@ -32,25 +33,20 @@ async fn sv_views(
   config: Config,
   session: Session,
 ) -> Result<HttpResponse, error::Error> {
-  let t0 = std::time::Instant::now();
   let uri = util::strip_slashes(uri.to_string());
 
   let user = auth::get_user(db_pool.clone(), &session).await?;
-  if user.is_none() && (uri != "/login") {
-    return Ok(util::redirect("views/login", &config));
-  };
-  if user.is_some() && (uri == "/login") {
-    return Ok(util::redirect("views/home", &config));
-  };
+  match user {
+    Some(_) if uri == "/login" => return Ok(util::redirect("views/home", &config)),
+    None if uri != "/login" => return Ok(util::redirect("views/login", &config)),
+    _ => (),
+  }
 
-  let res = mvc::model(uri, db_pool, config, user).await.map(|res| {
+  mvc::model(uri, db_pool, config, user).await.map(|res| {
     HttpResponse::Ok()
       .content_type("text/html; charset=utf-8")
       .body(res.into_string())
-  })?;
-
-  println!("profiling: {:?}", std::time::Instant::now().duration_since(t0));
-  Ok(res)
+  })
 }
 
 #[post("/rpc/{uri:.+}")]
@@ -61,7 +57,6 @@ async fn sv_rpc(
   config: Config,
   session: Session,
 ) -> Result<HttpResponse, error::Error> {
-  let t0 = std::time::Instant::now();
   let uri = util::strip_slashes(uri.to_string());
 
   let user = auth::get_user(db_pool.clone(), &session).await?;
@@ -70,18 +65,19 @@ async fn sv_rpc(
   };
 
   // parse into untyped
-  let post_data = serde_json::from_slice::<JsonValue>(util::read_payload(payload, &config).await?.as_ref())?;
+  let post_data =
+    serde_json::from_slice::<JsonValue>(util::read_payload(payload, &config).await?.as_ref())?;
 
-  let res = mvc::controller(uri, post_data, db_pool, config, user, session)
+  mvc::controller(uri, post_data, db_pool, config, user, session)
     .await
-    .map(|res| HttpResponse::Ok().json(res));
-
-  println!("profiling: {:?}", std::time::Instant::now().duration_since(t0));
-  res
+    .map(|res| HttpResponse::Ok().json(res))
 }
 
 #[actix_rt::main]
-pub async fn init(config: config::Config, db_pool: Pool<SqliteConnectionManager>) -> error::Result<()> {
+pub async fn init(
+  config: config::Config,
+  db_pool: Pool<SqliteConnectionManager>,
+) -> error::Result<()> {
   let server = HttpServer::new({
     let config = config.clone();
     move || {
@@ -120,7 +116,7 @@ pub async fn init(config: config::Config, db_pool: Pool<SqliteConnectionManager>
         .await?;
     }
     #[cfg(not(target_os = "linux"))]
-    bail!("Unix sockets are not available for this target");
+    error_chain::bail!("Unix sockets are not available for this target");
   } else {
     server.bind(config.server.bind_addr)?.run().await?;
   }
