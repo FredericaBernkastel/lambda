@@ -257,6 +257,99 @@ $(function(){
       })
     }
   }
+
+  //====================== map controller
+  function map_presentation($wrapper, coords /* Vec<[f32; 2]> */) {
+    if (coords.length === 0)
+      return;
+
+    var api_key = __glob['gmaps_api_key'];
+    var iframe = document.createElement("iframe");
+    iframe.setAttribute('allowFullScreen', '');
+    iframe.onload = function() {
+      var doc = iframe.contentDocument;
+
+      iframe.contentWindow.showNewMap = function() {
+        var self = this;
+        var mapContainer =  doc.createElement('div');
+        mapContainer.id = 'map';
+        doc.body.appendChild(mapContainer);
+
+        var map = new self.google.maps.Map(mapContainer, {
+          //center: new self.google.maps.LatLng(0, 0),
+          //zoom: 5,
+          mapTypeId: 'roadmap',
+          disableDefaultUI: true,
+          fullscreenControl: true,
+          styles: [
+            {
+              "featureType": "poi.business",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
+            },
+            {
+              "featureType": "transit",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
+            }
+          ]
+        });
+
+        var bounds = new self.google.maps.LatLngBounds();
+
+        var markers = coords.map(function(coord, i) {
+          var latlng = { lat: coord[0], lng: coord[1] };
+          bounds.extend(latlng);
+          return new self.google.maps.Marker({
+            position: latlng
+            //map: map
+          });
+        });
+
+        // Add a marker clusterer to manage the markers
+        var markerCluster = new self.MarkerClusterer(map, markers,
+            {imagePath: __root_url + 'static/img/map/clusters/m'});
+
+        { // limit min zoom
+          var epsilon = 0.0125;
+          var center = bounds.getCenter();
+          bounds.extend({lat: center.lat(), lng: center.lng() - epsilon});
+          bounds.extend({lat: center.lat(), lng: center.lng() + epsilon});
+        }
+        
+        map.fitBounds(bounds);
+      }
+
+      var css = document.createElement('style');
+      css.innerHTML = '                           \
+        body { margin: 0; }                       \
+        #map { width: 100%; height: 100%; }       \
+      ';
+
+      var head = iframe.contentDocument.getElementsByTagName('head')[0];
+      head.appendChild(css);
+
+      var script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.src = __root_url + 'static/markerclustererplus.min.js';
+      head.appendChild(script);
+
+      var script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.setAttribute('async', '');
+      script.setAttribute('defer', '');
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + api_key + '&callback=showNewMap';
+      head.appendChild(script);
+    };
+
+    $wrapper.append(iframe);
+  }
   
   $('a[href="#"]').on('click', function(e){
     e.preventDefault();
@@ -363,6 +456,16 @@ $(function(){
         $wrapper.find('#submit').trigger('click');
       }
     });
+  }
+
+  /* /home                     
+  * ##########################################*/
+  if (__path_t === '/home') {
+    var $wrapper = $('.page-home');
+    {
+      var $map = $wrapper.find('.node104 > .map');
+      map_presentation($map, JSON.parse($map.attr('data')));
+    }
   }
 
   /* /graffitis           
@@ -621,6 +724,10 @@ $(function(){
     var $wrapper = $('.page-graffiti');
 
     image_presentation($wrapper.find('.graffiti-image'), 'graffiti');
+    {
+      var $map = $wrapper.find('.node106 > .map');
+      map_presentation($map, JSON.parse($map.attr('data')));
+    }
 
     $wrapper.find('.actions-wrapper #delete').on('click', function(){
       display_warning('Delete graffiti?', function(){
@@ -755,6 +862,10 @@ $(function(){
     var $wrapper = $('.page-author');
 
     image_presentation($wrapper.find('.author-image'), 'author');
+    {
+      var $map = $wrapper.find('.node114_3 > .map');
+      map_presentation($map, JSON.parse($map.attr('data')));
+    }
 
     $wrapper.find('.actions-wrapper #delete').on('click', function(){
       display_warning('Delete author?', function(){

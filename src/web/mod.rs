@@ -107,18 +107,16 @@ pub async fn init(
         )
     }
   });
-  if config.server.bind_addr.starts_with("unix:/") {
+  let server = if config.server.bind_addr.starts_with("unix:/") {
     #[cfg(target_os = "linux")]
     {
-      server
-        .bind_uds(config.server.bind_addr.strip_prefix("unix:")?)?
-        .run()
-        .await?;
+      server.bind_uds(config.server.bind_addr.strip_prefix("unix:")?)?
     }
     #[cfg(not(target_os = "linux"))]
     error_chain::bail!("Unix sockets are not available for this target");
   } else {
-    server.bind(config.server.bind_addr)?.run().await?;
-  }
+    server.bind(config.server.bind_addr)?
+  };
+  server.run().await?;
   Ok(())
 }

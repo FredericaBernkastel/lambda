@@ -18,6 +18,7 @@ pub struct ServerConfig {
 pub struct WebConfig {
   pub root_url: String,
   pub secret_key: String,
+  pub gmaps_api_key: String,
   pub max_request_size: u32,
   pub rows_per_page: u32,
 }

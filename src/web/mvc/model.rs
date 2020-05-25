@@ -117,7 +117,8 @@ impl Model {
       "data": self.get_data,
       "root_url": self.root_url,
       "rpc": format!("{}rpc/", self.root_url),
-      "cors_h": cors_h
+      "cors_h": cors_h,
+      "gmaps_api_key": self.config.web.gmaps_api_key
     });
 
     self.v_root(page, js_glob)
@@ -128,7 +129,7 @@ impl Model {
   }
 
   async fn m_home(&self) -> Result<Markup> {
-    type Row = (/* id: */ u32, /*thumbnail: */ Option<String>);
+    type Graffiti = home_Graffiti;
 
     let (graffitis_recent, graffitis_last_checked, authors_last_checked) =
       web::block(self.db_pool.clone(), move |db| -> Result<_> {
@@ -136,16 +137,25 @@ impl Model {
           // graffitis_recent
           db.prepare(
             "select a.id as `0`,
-                    b.hash as `1`
+                    b.hash as `1`,
+                    c.gps_lat as `2`,
+                    c.gps_long as `3`
                from graffiti a
                     left join graffiti_image b on b.graffiti_id = a.id and
                                                   b.`order` = 0
+                    left join location c on c.graffiti_id = a.id
               order by a.id desc
               limit 0, 8",
           )?
-          .query_map(params![], |row| Ok((row.get(0)?, row.get(1)?)))?
+          .query_map(params![], |row| {
+            Ok(Graffiti {
+              id: row.get(0)?,
+              thumbnail: row.get(1)?,
+              coords: (|| Some([row.get::<_, f64>(2).ok()?, row.get::<_, f64>(3).ok()?]))(),
+            })
+          })?
           .filter_map(std::result::Result::ok)
-          .collect(): Vec<Row>,
+          .collect(): Vec<Graffiti>,
           // graffitis_last_checked
           db.prepare(
             "select a.id as `0`,
@@ -156,9 +166,15 @@ impl Model {
               order by a.last_viewed desc
               limit 0, 4",
           )?
-          .query_map(params![], |row| Ok((row.get(0)?, row.get(1)?)))?
+          .query_map(params![], |row| {
+            Ok(Graffiti {
+              id: row.get(0)?,
+              thumbnail: row.get(1)?,
+              coords: None,
+            })
+          })?
           .filter_map(std::result::Result::ok)
-          .collect(): Vec<Row>,
+          .collect(): Vec<Graffiti>,
           // authors_last_checked
           db.prepare(
             "select id as `0`,
@@ -650,6 +666,7 @@ impl Model {
       graffiti_most_viewed,
       aggregate_counties,
       aggregate_cities,
+      aggregate_gps,
     ) = web::block(self.db_pool.clone(), move |db| -> Result<_> {
       Ok((
         // author
@@ -753,6 +770,17 @@ impl Model {
         .query_map(params![id], |row| Ok((row.get(0)?, row.get(1)?)))?
         .filter_map(std::result::Result::ok)
         .collect(): Vec<(String, u32)>,
+        // aggregate_gps
+        db.prepare(
+          "select gps_lat,
+                 gps_long
+            from graffiti_author a
+                 inner join location b on b.graffiti_id = a.graffiti_id
+           where author_id = :id",
+        )?
+        .query_map(params![id], |row| Ok([row.get(0)?, row.get(1)?]))?
+        .filter_map(std::result::Result::ok)
+        .collect(): Vec<[f64; 2]>,
       ))
     })
     .await?;
@@ -781,6 +809,7 @@ impl Model {
       graffiti_most_viewed,
       aggregate_counties,
       aggregate_cities,
+      aggregate_gps,
     )
   }
 
@@ -845,4 +874,10 @@ pub struct author_edit_Author {
   pub home_city: String,
   pub social_networks: String,
   pub notes: String,
+}
+
+pub struct home_Graffiti {
+  pub id: u32,
+  pub thumbnail: Option<String>,
+  pub coords: Option<[f64; 2]>,
 }

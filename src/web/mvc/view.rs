@@ -255,10 +255,12 @@ impl View {
 
   pub fn v_home(
     &self,
-    graffitis_recent: Vec<(/* id: */ u32, /* thumbnail: */ Option<String>)>,
-    graffitis_last_checked: Vec<(/* id: */ u32, /* thumbnail: */ Option<String>)>,
+    graffitis_recent: Vec<model::home_Graffiti>,
+    graffitis_last_checked: Vec<model::home_Graffiti>,
     authors_last_checked: Vec<(/* id: */ u32, /* name: */ String)>,
   ) -> Result<Markup> {
+    let map_aggregate: Vec<[f64; 2]> = graffitis_recent.iter().filter_map(|x| x.coords).collect();
+
     Ok(html! {
       (self.mar_header()?)
 
@@ -268,10 +270,10 @@ impl View {
             .node103.boxed {
               p.box-title { "Most recent additions" }
               .images {
-                @for (id, thumbnail) in graffitis_recent {
-                  a href={ (self.root_url) "views/graffiti/" (id) } {
+                @for graffiti in graffitis_recent {
+                  a href={ (self.root_url) "views/graffiti/" (graffiti.id) } {
                     .image {
-                      @if let Some(thumbnail) = thumbnail {
+                      @if let Some(thumbnail) = graffiti.thumbnail {
                         img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, thumbnail.get(0..=1)?, thumbnail));
                       } @else {
                         .no-image {  }
@@ -284,10 +286,10 @@ impl View {
             .node103.boxed {
               p.box-title { "Last checked graffiti" }
               .images {
-                @for (id, thumbnail) in graffitis_last_checked {
-                  a href={ (self.root_url) "views/graffiti/" (id) } {
+                @for graffiti in graffitis_last_checked {
+                  a href={ (self.root_url) "views/graffiti/" (graffiti.id) } {
                     .image {
-                      @if let Some(thumbnail) = thumbnail {
+                      @if let Some(thumbnail) = graffiti.thumbnail {
                         img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, thumbnail.get(0..=1)?, thumbnail));
                       } @else {
                         .no-image {  }
@@ -301,8 +303,7 @@ impl View {
           .node102 {
             .node104.boxed {
               p.box-title { "Recent activity map" }
-              .map {}
-              p { "Map location" }
+              .map data=(json!(map_aggregate).to_string()) {}
             }
             .node105.boxed {
               p.box-title { "Last checked authors" }
@@ -327,7 +328,7 @@ impl View {
     tags: Vec<String>,
   ) -> Result<Markup> {
     let gps = if let (Some(lat), Some(long)) = (location.gps_lat, location.gps_long) {
-      format!("{}, {}", lat, long)
+      format!("[{}, {}]", lat, long)
     } else {
       "".into()
     };
@@ -414,9 +415,8 @@ impl View {
               .descr { (util::markup_br(graffiti.notes)) }
             }
             .node106 {
-              .map {  }
+              .map data={"[" (gps) "]" } {  }
               p {
-                "map location" br;
                 (gps)
               }
             }
@@ -560,6 +560,7 @@ impl View {
     graffiti_most_viewed: Option<(/* id */ u32, /* thumbnail */ Option<String>)>,
     aggregate_counties: Vec<(/* country */ String, /* count */ u32)>,
     aggregate_cities: Vec<(/* city */ String, /* count */ u32)>,
+    aggregate_gps: Vec<[f64; 2]>,
   ) -> Result<Markup> {
     Ok(html! {
       (self.mar_header()?)
@@ -637,7 +638,7 @@ impl View {
                 }
               }
               .node114_3 {
-                .map { }
+                .map data=(json!(aggregate_gps).to_string()) { }
                 p { "Activity map of author" }
               }
             }
