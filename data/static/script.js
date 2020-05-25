@@ -338,14 +338,13 @@ $(function(){
       var script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = __root_url + 'static/markerclustererplus.min.js';
-      head.appendChild(script);
-
-      var script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.setAttribute('async', '');
-      script.setAttribute('defer', '');
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + api_key + '&callback=showNewMap';
-      head.appendChild(script);
+      script.onload = function() {
+        var script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + api_key + '&callback=showNewMap';
+        doc.body.appendChild(script);
+      }
+      doc.body.appendChild(script);
     };
 
     $wrapper.append(iframe);
