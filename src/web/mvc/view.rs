@@ -259,7 +259,16 @@ impl View {
     graffitis_last_checked: Vec<model::home_Graffiti>,
     authors_last_checked: Vec<(/* id: */ u32, /* name: */ String)>,
   ) -> Result<Markup> {
-    let map_aggregate: Vec<[f64; 2]> = graffitis_recent.iter().filter_map(|x| x.coords).collect();
+    let map_aggregate = graffitis_recent
+      .iter()
+      .filter_map(|x| {
+        Some(json!({
+         "id": x.id,
+         "thumbnail": x.thumbnail.clone(),
+         "coords": x.coords?
+        }))
+      })
+      .collect(): JsonValue;
 
     Ok(html! {
       (self.mar_header()?)
@@ -327,11 +336,20 @@ impl View {
     authors: Vec<model::graffiti_Author>,
     tags: Vec<String>,
   ) -> Result<Markup> {
-    let gps = if let (Some(lat), Some(long)) = (location.gps_lat, location.gps_long) {
-      format!("[{}, {}]", lat, long)
-    } else {
-      "".into()
-    };
+    let (gps_json, gps_label) =
+      if let (Some(lat), Some(long)) = (location.gps_lat, location.gps_long) {
+        (
+          json!([{
+            "id": graffiti.id,
+            "thumbnail": "",
+            "coords": [lat, long]
+          }])
+          .to_string(),
+          format!("[{}, {}]", lat, long),
+        )
+      } else {
+        ("[]".into(), "".into())
+      };
 
     Ok(html! {
       (self.mar_header()?)
@@ -415,9 +433,9 @@ impl View {
               .descr { (util::markup_br(graffiti.notes)) }
             }
             .node106 {
-              .map data={"[" (gps) "]" } {  }
+              .map data=(gps_json) {  }
               p {
-                (gps)
+                (gps_label)
               }
             }
           }
@@ -560,7 +578,7 @@ impl View {
     graffiti_most_viewed: Option<(/* id */ u32, /* thumbnail */ Option<String>)>,
     aggregate_counties: Vec<(/* country */ String, /* count */ u32)>,
     aggregate_cities: Vec<(/* city */ String, /* count */ u32)>,
-    aggregate_gps: Vec<[f64; 2]>,
+    aggregate_gps: Vec<model::home_Graffiti>,
   ) -> Result<Markup> {
     Ok(html! {
       (self.mar_header()?)

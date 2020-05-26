@@ -772,15 +772,25 @@ impl Model {
         .collect(): Vec<(String, u32)>,
         // aggregate_gps
         db.prepare(
-          "select gps_lat,
-                 gps_long
+          "select a.graffiti_id,
+                 b.gps_lat,
+                 b.gps_long,
+                 c.hash
             from graffiti_author a
                  inner join location b on b.graffiti_id = a.graffiti_id
+                 left join graffiti_image c on c.graffiti_id = a.graffiti_id and 
+                                               c.`order` = 0
            where author_id = :id",
         )?
-        .query_map(params![id], |row| Ok([row.get(0)?, row.get(1)?]))?
+        .query_map(params![id], |row| {
+          Ok(home_Graffiti {
+            id: row.get(0)?,
+            coords: Some([row.get(1)?, row.get(2)?]),
+            thumbnail: row.get(3)?,
+          })
+        })?
         .filter_map(std::result::Result::ok)
-        .collect(): Vec<[f64; 2]>,
+        .collect(): Vec<home_Graffiti>,
       ))
     })
     .await?;
@@ -876,6 +886,7 @@ pub struct author_edit_Author {
   pub notes: String,
 }
 
+#[derive(serde::Serialize)]
 pub struct home_Graffiti {
   pub id: u32,
   pub thumbnail: Option<String>,

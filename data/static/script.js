@@ -259,8 +259,8 @@ $(function(){
   }
 
   //====================== map controller
-  function map_presentation($wrapper, coords /* Vec<[f32; 2]> */) {
-    if (coords.length === 0)
+  function map_presentation($wrapper, graffitis /* [{id, thumbnail, coords: [f64; 2]}] */) {
+    if (graffitis.length === 0)
       return;
 
     var api_key = __glob['gmaps_api_key'];
@@ -303,18 +303,41 @@ $(function(){
 
         var bounds = new self.google.maps.LatLngBounds();
 
-        var markers = coords.map(function(coord, i) {
-          var latlng = { lat: coord[0], lng: coord[1] };
+        var markers = graffitis.map(function(graffiti, i) {
+          var latlng = { lat: graffiti.coords[0], lng: graffiti.coords[1] };
           bounds.extend(latlng);
-          return new self.google.maps.Marker({
+          var marker = new self.google.maps.Marker({
             position: latlng
             //map: map
           });
+
+          if (graffiti.thumbnail) {
+            var thumbnail = __root_url + 'static/img/graffiti/' + graffiti.thumbnail[0] + graffiti.thumbnail[1] + '/' + graffiti.thumbnail + '_p2.jpg'
+            var infowindow = new self.google.maps.InfoWindow({
+              content: '\
+                <div id="thumbnail">\
+                  <img src="' + thumbnail + '">\
+                </div>',
+              disableAutoPan: true
+            });
+            marker.addListener('mouseover', function() {
+              infowindow.open(map, marker);
+            });
+            marker.addListener('mouseout', function() {
+              infowindow.close();
+            });
+          }
+          marker.addListener('click', function() {
+            window.open(__root_url + 'views/graffiti/' + graffiti.id, '_blank');
+          });
+          return marker;
         });
 
         // Add a marker clusterer to manage the markers
-        var markerCluster = new self.MarkerClusterer(map, markers,
-            {imagePath: __root_url + 'static/img/map/clusters/m'});
+        var markerCluster = new self.MarkerClusterer(map, markers, {
+          imagePath: __root_url + 'static/img/map/clusters/m',
+          gridSize: 30
+        });
 
         { // limit min zoom
           var epsilon = 0.0125;
@@ -327,9 +350,10 @@ $(function(){
       }
 
       var css = document.createElement('style');
-      css.innerHTML = '                           \
-        body { margin: 0; }                       \
-        #map { width: 100%; height: 100%; }       \
+      css.innerHTML = '                                                   \
+        body { margin: 0; }                                               \
+        #map { width: 100%; height: 100%; }                               \
+          #map .gm-style .gm-style-iw-c { padding: 0; border-radius: 0; } \
       ';
 
       var head = iframe.contentDocument.getElementsByTagName('head')[0];
