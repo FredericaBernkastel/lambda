@@ -86,6 +86,7 @@ impl View {
               }
             }
           }
+          (self.mar_graffiti_search(model::graffitis_SearchOpts::default()))
           (mar_navigation)
           .table {
             .row.head {
@@ -127,34 +128,6 @@ impl View {
     authors: Vec<model::graffiti_Author>,
     tags: Vec<String>,
   ) -> Result<Markup> {
-    let mar_author_row = |author: Option<model::graffiti_Author>| {
-      html! {
-        .row {
-          .l {
-            (self.svg_sprite("times", "delete", ""))
-            @if let Some(author) = &author {
-              input type="text" readonly="" autocomplete="off" value=(author.name) data-id=(author.id);
-            } @else {
-              input type="text" readonly="" autocomplete="off";
-            }
-          }
-          .r {
-            @let checked =
-              {
-                if let Some(author) = author {
-                  author.indubitable
-                } else { false }
-              };
-            @if checked {
-              input type="checkbox" checked="";
-            } @else {
-              input type="checkbox";
-            }
-          }
-        }
-      }
-    };
-
     Ok(html! {
       (self.mar_header()?)
 
@@ -202,10 +175,10 @@ impl View {
                   .r { "Indubitable" }
                 }
                 @for author in authors {
-                  (mar_author_row(Some(author)))
+                  (self.mar_author_row(Some(author)))
                 }
-                (mar_author_row(None))
-                div data-type="x-template" data=((mar_author_row(None)).into_string()) { }
+                (self.mar_author_row(None))
+                div data-type="x-template" data=((self.mar_author_row(None)).into_string()) { }
               }
             }
             .node109.boxed {
@@ -218,8 +191,8 @@ impl View {
                 .row { .l { "Country: " }  .r { input#country type="text" value=(location.country); } }
                 .row { .l { "City: " }     .r { input#city type="text" value=(location.city); } }
                 .row { .l { "Street: " }   .r { input#street type="text" value=(location.street); } }
-                .row { .l { "Property: " } .r { input#property type="text" value=(location.property); } }
                 .row { .l { "Place: " }    .r { input#place type="text" value=(location.place); } }
+                .row { .l { "Property: " } .r { input#property type="text" value=(location.property); } }
               }
             }
           }
@@ -424,8 +397,8 @@ impl View {
                 .row { .l { "Country: " } .r { (location.country) } }
                 .row { .l { "City: " } .r { (location.city) } }
                 .row { .l { "Street: " } .r { (location.street) } }
-                .row { .l { "Property: " } .r { (location.property) } }
                 .row { .l { "Place: " } .r { (location.place) } }
+                .row { .l { "Property: " } .r { (location.property) } }
               }
             }
             .node105.boxed {
@@ -966,5 +939,113 @@ impl View {
         }
       }
     })
+  }
+
+  fn mar_author_row(&self, author: Option<model::graffiti_Author>) -> Markup {
+    html! {
+      .row {
+        .l {
+          (self.svg_sprite("times", "delete", ""))
+          @if let Some(author) = &author {
+            input type="text" readonly="" autocomplete="off" value=(author.name) data-id=(author.id);
+          } @else {
+            input type="text" readonly="" autocomplete="off";
+          }
+        }
+        .r {
+          @let checked =
+            {
+              if let Some(author) = author {
+                author.indubitable
+              } else { false }
+            };
+          @if checked {
+            input type="checkbox" checked="";
+          } @else {
+            input type="checkbox";
+          }
+        }
+      }
+    }
+  }
+
+  fn mar_graffiti_search(&self, request: model::graffitis_SearchOpts) -> Markup {
+    html! {
+      .search {
+        .title {
+          "Advanced search"
+          .icon
+            data-up=(self.svg_sprite("angle-up", "", "").into_string())
+            data-down=(self.svg_sprite("angle-down", "", "").into_string()) {
+            (self.svg_sprite("angle-down", "", ""))
+          }
+        }
+        .wrp {
+          .row1 {
+            .node108.boxed {
+              p.box-title { "Author(s)" }
+              .items {
+                .row.title {
+                  .l { "Author(s)" }
+                  .r { "Indubitable" }
+                }
+                @for author in request.authors {
+                  (self.mar_author_row(Some(author)))
+                }
+                (self.mar_author_row(None))
+                div data-type="x-template" data=((self.mar_author_row(None)).into_string()) { }
+              }
+            }
+            .node120.boxed {
+              p.box-title { "Location" }
+              .descr {
+                .row { .l { "Country: " }  .r { input#country type="text" value=(request.country.unwrap_or("".into())); } }
+                .row { .l { "City: " }     .r { input#city type="text" value=(request.city.unwrap_or("".into())); } }
+                .row { .l { "Street: " }   .r { input#street type="text" value=(request.street.unwrap_or("".into())); } }
+                .row { .l { "Place: " }    .r { input#place type="text" value=(request.place.unwrap_or("".into())); } }
+                .row { .l { "Property: " } .r { input#property type="text" value=(request.property.unwrap_or("".into())); } }
+              }
+            }
+            .node120.date.boxed {
+              p.box-title { "Date" }
+              .descr {
+                .row { .l { "Before: " } .r {
+                  input#date_before type="text"
+                    value=(request.date_before.unwrap_or("".into())) placeholder="2018-01-01 00:00";
+                } }
+                .row { .l { "After: " }  .r {
+                  input#date_after type="text"
+                    value=(request.date_after.unwrap_or("".into())) placeholder="2018-01-01 00:00";
+                } }
+              }
+            }
+            .node121 {
+              .node121_1.boxed {
+                p.box-title { "Tags" }
+                .tags_wrp {
+                  select.tags-input multiple="" autocomplete="off"  {
+                    @for tag in request.tags {
+                      option selected="" { (tag) }
+                    }
+                  }
+                }
+              }
+              .node121_2.boxed {
+                p.box-title { "Number of authors" }
+                input type="number" min="0" value=(request.authors_number.map(|x| x.to_string()).unwrap_or("".into()));
+              }
+            }
+          }
+          .actions-wrapper {
+            a href="#" {
+              span.action-btn#search {
+                "Search"
+                (self.svg_sprite("search", "", ""))
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

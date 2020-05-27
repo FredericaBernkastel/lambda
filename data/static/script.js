@@ -373,6 +373,123 @@ $(function(){
 
     $wrapper.append(iframe);
   }
+
+  //====================== author input controller
+  function author_input($inputs) {
+    var author_focus_ctx = function() {
+      var self = $(this);
+      var select = $('<select />');
+      {
+        $(self.parents()[1]).after(select);
+
+        select.select2({
+          ajax: {
+            type: 'POST',
+            url: __rpc + 'search/author_names',
+            data: function (params) {
+              var query = JSON.stringify({
+                'cors_h': __cors_h,
+                'term': params.term
+              });
+              return query;
+            },
+            processResults: function (data) {
+              return {
+                results: JSON.parse(data).result.map(function(x, i){
+                  return {
+                    'id': x.id,
+                    'text': x.name
+                  }
+                })
+              };
+            }
+          },
+          minimumInputLength: 3
+        });
+
+        select.val(self.attr('data-id'));
+        select.select2('open');
+        select.on('select2:close', function(){
+          var data = select.select2('data');
+          select.select2('destroy');
+          select.remove();
+          if (data.length) {
+            self.val(data[0].text);
+            self.attr('data-id', data[0].id);
+            self.trigger('input');
+          }
+        })
+      }
+    };
+
+    var author_input_ctx = function() {
+      var self = $(this);
+      var next = $(self.parents()[1]).next();
+      var value = self.val();
+      var is_last = next.is('[data-type="x-template"]');
+
+      if (value === '' && !is_last) {
+        $(self.parents()[1]).remove();
+        //next.find('input[type="text"]').focus();
+      }
+
+      if (value !== '' && is_last){
+        var tpl = $(
+            $(self.parents()[2])
+              .find('[data-type="x-template"]')
+              .attr('data')
+          );
+        tpl.find('input[type="text"]')
+          .on('focus', author_focus_ctx)
+          .on('input', author_input_ctx)
+          .siblings('.delete')
+          .on('click', author_clear_ctx);
+        $(self.parents()[1]).after(tpl);
+      }
+    };
+    var author_clear_ctx = function() {
+      var self = $(this);
+      self
+        .siblings('input[type="text"]')
+        .val('')
+        .trigger('input');
+    };
+
+    $inputs
+      .on('focus', author_focus_ctx)
+      .on('input', author_input_ctx)
+      .siblings('.delete')
+      .on('click', author_clear_ctx);
+  }
+
+  //====================== graffiti tags input controller
+  function graffiti_tags_input($wrapper) {
+    $wrapper.select2({
+      tags: true,
+      ajax: {
+        type: 'POST',
+        url: __rpc + 'search/tag_names',
+        data: function (params) {
+          var query = JSON.stringify({
+            'cors_h': __cors_h,
+            'term': params.term
+          });
+          return query;
+        },
+        processResults: function (data) {
+          return {
+            results: JSON.parse(data).result.map(function(x, i){
+              return {
+                'id': x.name,
+                'text': x.name
+              }
+            })
+          };
+        }
+      },
+      minimumInputLength: 1
+    });
+  }
   
   $('a[href="#"]').on('click', function(e){
     e.preventDefault();
@@ -495,17 +612,46 @@ $(function(){
    * /graffitis/page/:page          
    * ##########################################*/
   if (__path_t === '/graffitis' || __path_t === '/graffitis/page/:page') {
+    $wrapper = $('.page-graffitis');
+
+    // hotkeys
     $(document)
       .on('keydown', null, 'left', function(){
-        var link = $('.page-graffitis .navigation .n_back a');
+        var link = $wrapper.find('.navigation .n_back a');
         if(link.length)
           link[0].click()
       })
       .on('keydown', null, 'right', function(){
-        var link = $('.page-graffitis .navigation .n_next a');
+        var link = $wrapper.find('.navigation .n_next a');
         if(link.length)
           link[0].click()
       })
+
+    // search
+    {
+      var init = false;
+
+      var wrp = $wrapper.find('.search > .wrp');
+      $wrapper.find('.search > .title').on('click', function(){
+        var self = $(this);
+        var icon = self.children('.icon'); 
+        wrp.toggle();
+        if(wrp.css('display') === 'block') {
+          if(!init) {
+            // author input controller
+            author_input($wrapper.find('.search .node108 .row input[type="text"]'));
+
+            // graffiti tags input controller
+            graffiti_tags_input($wrapper.find('.node121_1 .tags-input'));
+
+            init = true;
+          }
+          icon.html(icon.attr('data-up'));
+        }
+        else
+          icon.html(icon.attr('data-down'));
+      });
+    }
   }
 
   /* /graffiti/add    
@@ -627,117 +773,11 @@ $(function(){
       });
     });
 
-    //====================== author input controller
-    var author_focus_ctx = function() {
-      var self = $(this);
-      var select = $('<select />');
-      {
-        $(self.parents()[1]).after(select);
+    // authors input controller
+    author_input($wrapper.find('.node108 .row input[type="text"]'));
 
-        select.select2({
-          ajax: {
-            type: 'POST',
-            url: __rpc + 'search/author_names',
-            data: function (params) {
-              var query = JSON.stringify({
-                'cors_h': __cors_h,
-                'term': params.term
-              });
-              return query;
-            },
-            processResults: function (data) {
-              return {
-                results: JSON.parse(data).result.map(function(x, i){
-                  return {
-                    'id': x.id,
-                    'text': x.name
-                  }
-                })
-              };
-            }
-          },
-          minimumInputLength: 3
-        });
-
-        select.val(self.attr('data-id'));
-        select.select2('open');
-        select.on('select2:close', function(){
-          var data = select.select2('data');
-          select.select2('destroy');
-          select.remove();
-          if (data.length) {
-            self.val(data[0].text);
-            self.attr('data-id', data[0].id);
-            self.trigger('input');
-          }
-        })
-      }
-    };
-    var author_input_ctx = function() {
-      var self = $(this);
-      var next = $(self.parents()[1]).next();
-      var value = self.val();
-      var is_last = next.is('[data-type="x-template"]');
-
-      if (value === '' && !is_last) {
-        $(self.parents()[1]).remove();
-        //next.find('input[type="text"]').focus();
-      }
-
-      if (value !== '' && is_last){
-        var tpl = $(
-            $(self.parents()[2])
-              .find('[data-type="x-template"]')
-              .attr('data')
-          );
-        tpl.find('input[type="text"]')
-          .on('focus', author_focus_ctx)
-          .on('input', author_input_ctx)
-          .siblings('.delete')
-          .on('click', author_clear_ctx);
-        $(self.parents()[1]).after(tpl);
-      }
-    };
-    var author_clear_ctx = function() {
-      var self = $(this);
-      self
-        .siblings('input[type="text"]')
-        .val('')
-        .trigger('input');
-    };
-    $wrapper.find('.node108 .row input[type="text"]')
-      .on('focus', author_focus_ctx)
-      .on('input', author_input_ctx)
-      .siblings('.delete')
-      .on('click', author_clear_ctx);
-
-
-    // tags input controller
-    $wrapper.find('.node112 .tags-input').select2({
-      tags: true,
-      ajax: {
-        type: 'POST',
-        url: __rpc + 'search/tag_names',
-        data: function (params) {
-          var query = JSON.stringify({
-            'cors_h': __cors_h,
-            'term': params.term
-          });
-          return query;
-        },
-        processResults: function (data) {
-          return {
-            results: JSON.parse(data).result.map(function(x, i){
-              return {
-                'id': x.name,
-                'text': x.name
-              }
-            })
-          };
-        }
-      },
-      minimumInputLength: 1
-    });
+    // graffiti tags input controller
+    graffiti_tags_input($wrapper.find('.node112 .tags-input'));
   }
 
   /* /graffiti/:id               

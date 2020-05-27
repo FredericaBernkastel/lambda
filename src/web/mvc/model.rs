@@ -892,3 +892,17 @@ pub struct home_Graffiti {
   pub thumbnail: Option<String>,
   pub coords: Option<[f64; 2]>,
 }
+
+#[derive(Default)]
+pub struct graffitis_SearchOpts {
+  pub country: Option<String>,
+  pub city: Option<String>,
+  pub street: Option<String>,
+  pub place: Option<String>,
+  pub property: Option<String>,
+  pub date_before: Option<String>,
+  pub date_after: Option<String>,
+  pub authors_number: Option<u32>,
+  pub authors: Vec<graffiti_Author>,
+  pub tags: Vec<String>,
+}
