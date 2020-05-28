@@ -6,7 +6,10 @@ use sha2::{Digest, Sha256};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub fn get_timestamp() -> u64 {
-  SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+  SystemTime::now()
+    .duration_since(UNIX_EPOCH)
+    .unwrap()
+    .as_secs()
 }
 
 pub fn format_timestamp(timestamp: u64, fmt: &str) -> String {
@@ -55,7 +58,10 @@ pub fn redirect(path: &str, config: &Config) -> actix_web::HttpResponse {
     .finish()
 }
 
-pub async fn read_payload(mut payload: actix_web::web::Payload, config: &Config) -> Result<bytes::Bytes> {
+pub async fn read_payload(
+  mut payload: actix_web::web::Payload,
+  config: &Config,
+) -> Result<bytes::Bytes> {
   use futures::StreamExt;
 
   // payload is a stream of Bytes objects
@@ -71,10 +77,56 @@ pub async fn read_payload(mut payload: actix_web::web::Payload, config: &Config)
   Ok(post_data.freeze())
 }
 
-pub fn json_path<'a, T: serde::Deserialize<'a>>(data: &'a mut serde_json::Value, path: &'a str) -> Result<T> {
+pub fn json_path<'a, T: serde::Deserialize<'a>>(
+  data: &'a mut serde_json::Value,
+  path: &'a str,
+) -> Result<T> {
   let value = data
     .pointer_mut(path)
     .map(serde_json::Value::take)
     .ok_or(format!("unable to extract value \"{}\"", path))?;
   Ok(T::deserialize(value)?)
+}
+
+pub struct DynQuery {
+  pub sql: String,
+  pub params: Vec<(String, Box<dyn rusqlite::ToSql>)>,
+}
+
+impl DynQuery {
+  pub fn new() -> Self {
+    Self {
+      sql: String::new(),
+      params: vec![],
+    }
+  }
+
+  pub fn push(&mut self, sql: &str) -> &mut Self {
+    self.sql.push_str(sql);
+    self
+  }
+
+  pub fn bind(&mut self, params: Vec<(String, Box<dyn rusqlite::ToSql>)>) -> &mut Self {
+    for (k, v) in params {
+      self.params.push((k, v));
+    }
+    self
+  }
+}
+
+pub fn datetime_variable(datetime: &str) -> Option<i64> {
+  use chrono::prelude::*;
+  Some(
+    DateTime::<Utc>::from_utc(
+      NaiveDateTime::parse_from_str(&datetime, "%Y-%m-%d %H:%M")
+        .ok()
+        .or(
+          NaiveDate::parse_from_str(&datetime, "%Y-%m-%d")
+            .ok()
+            .map(|x| x.and_hms(0, 0, 0)),
+        )?,
+      Utc,
+    )
+    .timestamp(),
+  )
 }

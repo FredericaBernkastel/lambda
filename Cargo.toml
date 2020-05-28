@@ -39,6 +39,7 @@ image = { version = "0.23.2", default-features = false, features = ["jpeg"] }
 regex = "*"
 runtime-fmt = {git = "https://github.com/ludios/runtime-fmt"}
 error-chain = "0.12.2"
+flate2 = "1"
 
 [profile.release]
 lto = true

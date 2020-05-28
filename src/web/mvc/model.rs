@@ -37,6 +37,8 @@ pub async fn main(
         "/home",
         "/graffitis",
         "/graffitis/page/:page",
+        "/graffitis/search/:x-data",
+        "/graffitis/search/:x-data/page/:page",
         "/graffiti/add",
         "/graffiti/:id",
         "/graffiti/:id/edit",
@@ -83,6 +85,8 @@ pub async fn main(
 
             "/graffitis" => model.m_graffitis().await?, // --------------
             "/graffitis/page/:page" => model.m_graffitis().await?, // ---
+            "/graffitis/search/:x-data" => model.m_graffitis_search().await?, // -------------
+            "/graffitis/search/:x-data/page/:page" => model.m_graffitis_search().await?, // --
 
             "/graffiti/add" => model.m_graffiti_edit().await?, // -------
             "/graffiti/:id" => model.m_graffiti().await?,      //       |
@@ -253,7 +257,167 @@ impl Model {
       total as i64,
     )?;
 
-    self.v_graffitis(graffitis, mar_navigation)
+    self.v_graffitis(graffitis, mar_navigation, None)
+  }
+
+  async fn m_graffitis_search(&self) -> Result<Markup> {
+    use std::io::Read;
+    type Graffiti = graffitis_Graffiti;
+
+    let page: i64 = self.get_data.get("page").unwrap_or(&"1".into()).parse()?;
+    let data = self.get_data.get("x-data")?;
+
+    let request: graffitis_SearchOpts = {
+      let base64 = base64::decode_config(data, base64::URL_SAFE)?;
+      let mut gz = flate2::read::GzDecoder::new(base64.as_slice());
+      let mut s = String::new();
+      gz.read_to_string(&mut s)?;
+      serde_json::from_str(&s)?
+    };
+
+    let (graffitis, total) = web::block(self.db_pool.clone(), {
+      let rows_per_page = self.config.web.rows_per_page;
+      let request = request.clone();
+      move |db| -> Result<_> {
+        let mut dyn_stmt = util::DynQuery::new();
+        dyn_stmt.push(
+          "select e.id as `0`,
+                 e.datetime as `1`,
+                 e.views as `2`,
+                 a.city as `3`,
+                 b.hash as `4`
+            from graffiti e
+                 left join location a on a.graffiti_id = e.id
+                 left join graffiti_image b on b.graffiti_id = e.id and 
+                                               b.`order` = 0
+                 left join graffiti_author c on c.graffiti_id = e.id
+                 left join graffiti_tag d on d.graffiti_id = e.id",
+        );
+        dyn_stmt.push(" where true").bind(vec![
+          (":page".into(), Box::new(page - 1)),
+          (":limit".into(), Box::new(rows_per_page)),
+        ]);
+
+        if let Some(country) = request.country {
+          dyn_stmt
+            .push(" and a.country = :country")
+            .bind(vec![(":country".into(), Box::new(country))]);
+        }
+        if let Some(city) = request.city {
+          dyn_stmt
+            .push(" and a.city = :city")
+            .bind(vec![(":city".into(), Box::new(city))]);
+        }
+        if let Some(street) = request.street {
+          dyn_stmt
+            .push(" and a.street = :street")
+            .bind(vec![(":street".into(), Box::new(street))]);
+        }
+        if let Some(place) = request.place {
+          dyn_stmt
+            .push(" and a.place = :place")
+            .bind(vec![(":place".into(), Box::new(place))]);
+        }
+        if let Some(property) = request.property {
+          dyn_stmt
+            .push(" and a.property = :property")
+            .bind(vec![(":property".into(), Box::new(property))]);
+        }
+        if let Some(date_before) = request.date_before {
+          dyn_stmt.push(" and e.datetime < :date_before").bind(vec![(
+            ":date_before".into(),
+            Box::new(util::datetime_variable(&date_before)?),
+          )]);
+        }
+        if let Some(date_after) = request.date_after {
+          dyn_stmt.push(" and e.datetime > :date_after").bind(vec![(
+            ":date_after".into(),
+            Box::new(util::datetime_variable(&date_after)?),
+          )]);
+        }
+        for (i, author) in request.authors.iter().enumerate() {
+          let op = if i == 0 { "and" } else { "or" };
+          if author.indubitable {
+            dyn_stmt.push(&format!(
+              " {} (c.author_id, c.indubitable) in ( values (:author{}, true) )",
+              op, i
+            ))
+          } else {
+            dyn_stmt.push(&format!(" {} c.author_id in (:author{})", op, i))
+          }
+          .bind(vec![(format!(":author{}", i), Box::new(author.id))]);
+        }
+        if request.tags.len() > 0 {
+          dyn_stmt.push(
+            " and d.tag_id in (
+               select id
+                 from tag
+                where name in (",
+          );
+          for (i, tag) in request.tags.iter().enumerate() {
+            dyn_stmt
+              .push(&format!("{}:tag{}", if i > 0 { "," } else { "" }, i))
+              .bind(vec![(format!(":tag{}", i), Box::new(tag.to_owned()))]);
+          }
+          dyn_stmt.push("))");
+        }
+        dyn_stmt.push(" group by e.id");
+
+        /*if let Some(authors_number) = request.authors_number {
+          dyn_stmt
+            .push(" having e.author_count = :author_count")
+            .bind(vec![(":author_count".into(), Box::new(authors_number))]);
+        }*/
+
+        dyn_stmt.push(
+          " order by e.id desc
+            limit :page * :limit, :limit",
+        );
+
+        let mut dyn_stmt_count = util::DynQuery::new();
+        dyn_stmt_count.push(&format!("select count( * ) from ({})", &dyn_stmt.sql));
+
+        let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![];
+        let mut params_count: Vec<(&str, &dyn rusqlite::ToSql)> = vec![];
+        for (k, v) in &dyn_stmt.params {
+          params.push((k, v));
+          match k.as_str() {
+            ":page" => params_count.push((k, &0)),
+            ":limit" => params_count.push((k, &-1)),
+            _ => params_count.push((k, v)),
+          };
+        }
+
+        Ok((
+          //graffitiis
+          db.prepare(&dyn_stmt.sql)?
+            .query_map_named(params.as_slice(), |row| {
+              Ok(Graffiti {
+                id: row.get(0)?,
+                datetime: row.get(1)?,
+                views: row.get(2)?,
+                city: row.get(3)?,
+                thumbnail: row.get(4)?,
+              })
+            })?
+            .filter_map(std::result::Result::ok)
+            .collect(),
+          // total
+          db.prepare(&dyn_stmt_count.sql)?
+            .query_row_named(params_count.as_slice(), |row| row.get::<_, i64>(0))?,
+        ))
+      }
+    })
+    .await?;
+
+    let mar_navigation = self.mar_navigation(
+      &format!("{{}}views/graffitis/search/{}/page/{{}}", data),
+      page,
+      self.config.web.rows_per_page as i64,
+      total as i64,
+    )?;
+
+    self.v_graffitis(graffitis, mar_navigation, Some(request))
   }
 
   async fn m_graffiti_edit(&self) -> Result<Markup> {
@@ -859,6 +1023,7 @@ pub struct graffiti_edit_Location {
   pub gps: String,
 }
 
+#[derive(Debug, Clone, serde::Deserialize)]
 pub struct graffiti_Author {
   pub id: u32,
   pub indubitable: bool,
@@ -893,7 +1058,7 @@ pub struct home_Graffiti {
   pub coords: Option<[f64; 2]>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, serde::Deserialize)]
 pub struct graffitis_SearchOpts {
   pub country: Option<String>,
   pub city: Option<String>,

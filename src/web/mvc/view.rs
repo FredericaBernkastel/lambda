@@ -72,6 +72,7 @@ impl View {
     &self,
     graffitis: Vec<model::graffitis_Graffiti>,
     mar_navigation: Markup,
+    search_opts: Option<model::graffitis_SearchOpts>,
   ) -> Result<Markup> {
     Ok(html! {
       (self.mar_header()?)
@@ -86,7 +87,7 @@ impl View {
               }
             }
           }
-          (self.mar_graffiti_search(model::graffitis_SearchOpts::default()))
+          (self.mar_graffiti_search(search_opts))
           (mar_navigation)
           .table {
             .row.head {
@@ -842,7 +843,7 @@ impl View {
     per_page: i64,
     total: i64,
   ) -> Result<Markup> {
-    let total_pages = (total as f64 / per_page as f64).ceil() as i64;
+    let total_pages = ((total as f64 / per_page as f64).ceil() as i64).max(1);
 
     if current_page < 1 || current_page > total_pages {
       bail!(ErrorKind::InvalidRequest);
@@ -969,9 +970,11 @@ impl View {
     }
   }
 
-  fn mar_graffiti_search(&self, request: model::graffitis_SearchOpts) -> Markup {
+  fn mar_graffiti_search(&self, request: Option<model::graffitis_SearchOpts>) -> Markup {
+    let classname = if request.is_none() { "" } else { "init" };
+    let request = request.unwrap_or_default();
     html! {
-      .search {
+      .search.(classname) {
         .title {
           "Advanced search"
           .icon
@@ -1032,7 +1035,7 @@ impl View {
               }
               .node121_2.boxed {
                 p.box-title { "Number of authors" }
-                input type="number" min="0" value=(request.authors_number.map(|x| x.to_string()).unwrap_or("".into()));
+                input#authors_number type="number" min="0" value=(request.authors_number.map(|x| x.to_string()).unwrap_or("".into()));
               }
             }
           }

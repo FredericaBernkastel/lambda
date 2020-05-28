@@ -31,7 +31,10 @@ pub async fn main(
 ) -> Result<String> {
   // check cors hash
   {
-    if !util::check_cors_hash(json_path::<String>(&mut post_data, "/cors_h")?.as_str(), &config) {
+    if !util::check_cors_hash(
+      json_path::<String>(&mut post_data, "/cors_h")?.as_str(),
+      &config,
+    ) {
       bail!("unauthorized");
     }
   }
@@ -117,7 +120,15 @@ impl Controller {
       password: String,
     };
     let request: Request = from_json(self.post_data.take())?;
-    let result = match auth::login(&request.login, &request.password, self.db_pool, &self.config, session).await {
+    let result = match auth::login(
+      &request.login,
+      &request.password,
+      self.db_pool,
+      &self.config,
+      session,
+    )
+    .await
+    {
       Ok(_) => Opcode::Success,
       Err(Error(ErrorKind::InvalidLogin, _)) => Opcode::InvalidLogin,
       Err(e) => bail!(e),
@@ -471,7 +482,9 @@ impl Controller {
           where `graffiti_id` = :id
           order by `order` asc",
         )?
-        .query_map(params![request.graffiti.id], |row| Ok(row.get::<_, String>(0)?))?
+        .query_map(params![request.graffiti.id], |row| {
+          Ok(row.get::<_, String>(0)?)
+        })?
         .filter_map(std::result::Result::ok)
         .collect();
 
@@ -931,7 +944,13 @@ impl Controller {
     for image in &old_images {
       if !new_images.contains(image) {
         for p in 0..=2 {
-          let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1)?, image, p);
+          let path = format!(
+            "{}/{}/{}_p{}.jpg",
+            images_folder,
+            image.get(0..=1)?,
+            image,
+            p
+          );
           std::fs::remove_file(path)?;
         }
       }
@@ -939,7 +958,8 @@ impl Controller {
     // 2. move new images from temp dir
     {
       let mut stmt_insert = transaction.prepare(sql_insert)?;
-      let mut stmt_delete_tmp = transaction.prepare("delete from `tmp_store_image` where `id` = :hash")?;
+      let mut stmt_delete_tmp =
+        transaction.prepare("delete from `tmp_store_image` where `id` = :hash")?;
 
       for (id, image) in new_images.iter().enumerate() {
         if !old_images.contains(image) {
@@ -952,7 +972,11 @@ impl Controller {
           stmt_delete_tmp.execute(params![image])?;
         }
         // 3. insert into database
-        stmt_insert.execute_named(named_params![":id": foreign_id, ":hash": image, ":order": id as u32,])?;
+        stmt_insert.execute_named(named_params![
+          ":id": foreign_id,
+          ":hash": image,
+          ":order": id as u32,
+        ])?;
       }
     }
     Ok(())

@@ -66,6 +66,13 @@ $(function(){
     return popup;
   }
 
+  // i hate dynamic types
+  function null_norm(x) {
+    if (x === '' || x === undefined || x === NaN)
+      return null;
+    return x;
+  }
+
   //====================== images upload
   function image_upload_ctr(__rpc_fn, $wrapper) {
 
@@ -490,6 +497,48 @@ $(function(){
       minimumInputLength: 1
     });
   }
+
+  //====================== graffiti search controller
+  function graffiti_search($wrapper) {
+    $wrapper.find('.actions-wrapper #search').on('click', function(){
+      var authors = function(){
+        var result = [];
+        $wrapper.find('.node108 .row input[data-id]').map(function(i, x){
+          var self = $(x);
+          result.push({
+            id: +self.attr('data-id'),
+            indubitable: $(self.parents()[1]).find('input[type="checkbox"]').prop('checked'),
+            name: self.val()
+          })
+        });
+        return result;
+      }();
+
+      var tags = $wrapper
+        .find('.node121_1 .tags-input')
+        .select2('data')
+        .map(function(x) {
+          return x.text;
+        });
+
+      var data = JSON.stringify({
+        'country': null_norm($wrapper.find('#country').val()),
+        'city': null_norm($wrapper.find('#city').val()),
+        'street': null_norm($wrapper.find('#street').val()),
+        'place': null_norm($wrapper.find('#place').val()),
+        'property': null_norm($wrapper.find('#property').val()),
+        'date_before': null_norm($wrapper.find('#date_before').val()),
+        'date_after': null_norm($wrapper.find('#date_after').val()),
+        'authors_number': null_norm(parseInt($wrapper.find('#authors_number').val())),
+        'authors': authors,
+        'tags': tags
+      });
+
+      var data = base64.bytesToBase64(gzip.zip(data, {level: 9})).replace(/\+/g, '-').replace(/\//g, '_');
+
+      window.location = __root_url + 'views/graffitis/search/' + data;
+    });
+  }
   
   $('a[href="#"]').on('click', function(e){
     e.preventDefault();
@@ -609,9 +658,11 @@ $(function(){
   }
 
   /* /graffitis           
-   * /graffitis/page/:page          
+   * /graffitis/page/:page    
+   * /graffitis/search/:x-data
+   * /graffitis/search/:x-data/page/:page      
    * ##########################################*/
-  if (__path_t === '/graffitis' || __path_t === '/graffitis/page/:page') {
+  if (__path_t === '/graffitis' || __path_t === '/graffitis/page/:page' || __path_t === '/graffitis/search/:x-data' || __path_t === '/graffitis/search/:x-data/page/:page') {
     $wrapper = $('.page-graffitis');
 
     // hotkeys
@@ -651,6 +702,11 @@ $(function(){
         else
           icon.html(icon.attr('data-down'));
       });
+      if($wrapper.find('.search').hasClass('init'))
+         $wrapper.find('.search > .title').trigger('click');
+
+      // graffiti search controller
+      graffiti_search($wrapper.find('.search'));
     }
   }
 

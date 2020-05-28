@@ -11,6 +11,8 @@ error_chain! {
     IoError(std::io::Error);
     TomlError(toml::de::Error);
     ClapError(clap::Error);
+    FromUtf8Error(std::string::FromUtf8Error);
+    ChronoParseError(chrono::format::ParseError);
   }
 
   errors {
