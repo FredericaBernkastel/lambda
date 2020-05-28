@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Mon May 11 19:58:42 2020
+-- File generated with SQLiteStudio v3.2.1 on Thu May 28 22:16:29 2020
 --
 -- Text encoding used: System
 --
@@ -50,7 +50,9 @@ create table graffiti (
                        default (''),
   views        INTEGER not null
                        default (0),
-  last_viewed  INTEGER
+  last_viewed  INTEGER,
+  author_count INTEGER not null
+                       default (0) 
 );
 
 
@@ -209,6 +211,30 @@ create index tag_name on tag (
 create index users_login on users (
   login
 );
+
+
+-- Trigger: graffiti_author_delete
+create trigger graffiti_author_delete
+        before delete
+            on graffiti_author
+      for each row
+begin
+  update graffiti
+     set author_count = author_count - 1
+   where graffiti.id = old.graffiti_id;
+end;
+
+
+-- Trigger: graffiti_author_insert
+create trigger graffiti_author_insert
+         after insert
+            on graffiti_author
+      for each row
+begin
+  update graffiti
+     set author_count = author_count + 1
+   where graffiti.id = new.graffiti_id;
+end;
 
 
 -- Trigger: graffiti_tag_delete

@@ -335,6 +335,11 @@ impl Model {
             Box::new(util::datetime_variable(&date_after)?),
           )]);
         }
+        if let Some(author_count) = request.authors_number {
+          dyn_stmt
+            .push(" and e.author_count = :author_count")
+            .bind(vec![(":author_count".into(), Box::new(author_count))]);
+        }
         for (i, author) in request.authors.iter().enumerate() {
           let op = if i == 0 { "and" } else { "or" };
           if author.indubitable {
@@ -361,16 +366,9 @@ impl Model {
           }
           dyn_stmt.push("))");
         }
-        dyn_stmt.push(" group by e.id");
-
-        /*if let Some(authors_number) = request.authors_number {
-          dyn_stmt
-            .push(" having e.author_count = :author_count")
-            .bind(vec![(":author_count".into(), Box::new(authors_number))]);
-        }*/
-
         dyn_stmt.push(
-          " order by e.id desc
+          " group by e.id
+            order by e.id desc
             limit :page * :limit, :limit",
         );
 
