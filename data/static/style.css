@@ -57,6 +57,7 @@ input[type="text"],
 input[type="number"],
 select, textarea { width: 100%; font: 13px/1 Consolas, monaco, monospace; border: solid 1px #dbdbdb; padding: 3px 2px; }
 input[type="checkbox"] { margin: 0; }
+input[type="checkbox"] + label { margin-left: 4px; }
 [data-type="x-template"] { display: none; }
 select { padding: 1px 0; }
 
@@ -171,6 +172,25 @@ select { padding: 1px 0; }
       .page-graffitis .table .graffiti-img { width: 100px; height: 75px; display: flex; align-items: center; justify-content: center; }
     .page-graffitis .table .row.head > * { justify-content: center; }
   .page-graffitis .navigation { margin-bottom: 30px; }
+.page-graffitis .search { display: flex; flex-direction: column; align-items: center; margin: -43px 0 30px 0; }
+  .page-graffitis .search > .title { display: flex; align-items: center; cursor: pointer; }
+    .page-graffitis .search > .title .icon { width: 13px; height: 14.5px; margin-left: 5px; }
+  .page-graffitis .search > .wrp { width: 100%; display: none; }
+  .page-graffitis .search .row1 { margin: 15px 0; width: 100%; display: flex; align-items: flex-start; }
+    .page-graffitis .search .row1 > .node108 { margin-right: 15px; flex-basis: 233px; }
+    .page-graffitis .search .row1 > .node120 { flex-basis: 390px; margin-right: 15px; }
+    .page-graffitis .search .row1 > .node120.date { flex-basis: 220px; }
+    .page-graffitis .search .row1 .node120 .descr { display: flex; flex-direction: column; }
+    .page-graffitis .search .row1 .node120 .descr > .row { display: flex; justify-content: space-between; }
+    .page-graffitis .search .row1 .node120 .descr > .row + .row { margin-top: 8px; }
+      .page-graffitis .search .row1 .node120 .descr > .row > .l { text-align: right; min-width: 66px; margin-right: 14px;}
+      .page-graffitis .search .row1 > .node120.date .descr > .row > .l { min-width: 48px; }
+      .page-graffitis .search .row1 .node120 .descr > .row > .r { flex-grow: 1; }
+    .page-graffitis .search .row1 > .node121 { display: flex; flex-direction: column; flex-grow: 1; }
+      .page-graffitis .search .node121_1 { margin-bottom: 15px; }
+        .page-graffitis .search .node121_1 .tags-input { width: 100%; }
+      .page-graffitis .search .node121_2 { width: 200px; }
+  .page-graffitis .search .actions-wrapper { justify-content: center; margin-bottom: 0; }
 
 .page-graffiti {  }
   .page-graffiti .row1 { display: flex; align-items: flex-start; }
@@ -268,6 +288,25 @@ select { padding: 1px 0; }
       .page-authors .table .graffiti-img { width: 56px; height: 75px; display: flex; align-items: center; justify-content: center; }
     .page-authors .table .row.head > * { justify-content: center; }
   .page-authors .navigation { margin-bottom: 30px; }
+.page-authors .search { display: flex; flex-direction: column; align-items: center; margin: -43px 0 30px 0; }
+  .page-authors .search > .title { display: flex; align-items: center; cursor: pointer; }
+    .page-authors .search > .title .icon { width: 13px; height: 14.5px; margin-left: 5px; }
+  .page-authors .search > .wrp { width: 100%; display: none; }
+  .page-authors .search .row1 { margin: 15px 0; width: 100%; display: flex; align-items: flex-start; }
+    .page-authors .search .node108 { margin-right: 15px; }
+    .page-authors .search .node122 { margin-right: 15px; display: flex; flex-direction: column; }
+      .page-authors .search .node122_1 + .node122_1 { margin-top: 15px; }
+        .page-authors .search .node122_1 .rows { display: flex; flex-direction: column; }
+          .page-authors .search .node122_1 .rows > .row { display: flex; justify-content: space-between; }
+          .page-authors .search .node122_1 .rows > .row + .row { margin-top: 8px; }
+            .page-authors .search .node122_1 .rows > .row > .l { text-align: right; min-width: 91px; margin-right: 14px;}
+            .page-authors .search .node122_1 .rows > .row > .r { width: 64px; }
+    .page-authors .search .node123 { margin-right: 15px; display: flex; flex-direction: column; }
+      .page-authors .search .node123_1 { margin-bottom: 15px; }
+    .page-authors .search .node124 { display: flex; flex-direction: column; flex-basis: 350px; align-items: flex-start; }
+      .page-authors .search .node124_1 { margin-bottom: 15px; }
+      .page-authors .search .node124_2 { width: 100%; }
+  .page-authors .search .actions-wrapper { justify-content: center; margin-bottom: 0; }
 
 .page-author {  }
   .page-author .row1 { display: flex; align-items: flex-start; }
@@ -351,22 +390,3 @@ select { padding: 1px 0; }
       .page-login .login > .form > #submit:active { background-color: #337ca1; }
         .page-login .login > .form > #submit > .icon { margin-left: 8px; display: flex; }
 
-.page-graffitis .search { display: flex; flex-direction: column; align-items: center; margin: -43px 0 30px 0; }
-  .page-graffitis .search > .title { display: flex; align-items: center; cursor: pointer; }
-    .page-graffitis .search > .title .icon { width: 13px; height: 14.5px; margin-left: 5px; }
-  .page-graffitis .search > .wrp { width: 100%; display: none; }
-  .page-graffitis .search .row1 { margin: 15px 0; width: 100%; display: flex; align-items: flex-start; }
-    .page-graffitis .search .row1 > .node108 { margin-right: 15px; flex-basis: 233px; }
-    .page-graffitis .search .row1 > .node120 { flex-basis: 390px; margin-right: 15px; }
-    .page-graffitis .search .row1 > .node120.date { flex-basis: 220px; }
-    .page-graffitis .search .row1 .node120 .descr { display: flex; flex-direction: column; }
-    .page-graffitis .search .row1 .node120 .descr > .row { display: flex; justify-content: space-between; }
-    .page-graffitis .search .row1 .node120 .descr > .row + .row { margin-top: 8px; }
-      .page-graffitis .search .row1 .node120 .descr > .row > .l { text-align: right; min-width: 66px; margin-right: 14px;}
-      .page-graffitis .search .row1 > .node120.date .descr > .row > .l { min-width: 48px; }
-      .page-graffitis .search .row1 .node120 .descr > .row > .r { flex-grow: 1; }
-    .page-graffitis .search .row1 > .node121 { display: flex; flex-direction: column; flex-grow: 1; }
-      .page-graffitis .search .node121_1 { margin-bottom: 15px; }
-        .page-graffitis .search .node121_1 .tags-input { width: 100%; }
-      .page-graffitis .search .node121_2 { width: 200px; }
-  .page-graffitis .search .actions-wrapper { justify-content: center; margin-bottom: 0; }

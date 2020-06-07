@@ -1,4 +1,4 @@
-use num_derive::FromPrimitive;
+use serde_repr::Deserialize_repr;
 use strum_macros::{Display, EnumIter};
 
 #[derive(Debug)]
@@ -16,7 +16,7 @@ pub struct Session {
 }
 
 #[repr(u8)]
-#[derive(Display, Debug, Copy, Clone, PartialEq, FromPrimitive, EnumIter)]
+#[derive(Display, Debug, Copy, Clone, PartialEq, Deserialize_repr, EnumIter)]
 pub enum ShiftTime {
   Morning = 0,
   Afternoon = 1,
@@ -48,7 +48,7 @@ pub struct Location {
 }
 
 #[repr(u8)]
-#[derive(Display, Debug, Copy, Clone, PartialEq, FromPrimitive, EnumIter)]
+#[derive(Display, Debug, Copy, Clone, PartialEq, Deserialize_repr, EnumIter)]
 pub enum Handedness {
   #[strum(serialize = "Right handed")]
   RightHanded = 0,

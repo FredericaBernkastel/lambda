@@ -830,7 +830,7 @@ $(function(){
     });
 
     // authors input controller
-    author_input($wrapper.find('.node108 .row input[type="text"]'));
+    author_input($wrapper.find('.search .node108 .row input[type="text"]'));
 
     // graffiti tags input controller
     graffiti_tags_input($wrapper.find('.node112 .tags-input'));
@@ -879,6 +879,9 @@ $(function(){
    * /authors/page/:page          
    * ##########################################*/
   if (__path_t === '/authors' || __path_t === '/authors/page/:page') {
+    var $wrapper = $('.page-authors');
+
+    // hotkeys
     $(document)
       .on('keydown', null, 'left', function(){
         var link = $('.page-authors .navigation .n_back a');
@@ -889,7 +892,37 @@ $(function(){
         var link = $('.page-authors .navigation .n_next a');
         if(link.length)
           link[0].click()
-      })
+      });
+
+    // search
+    {
+      var init = false;
+
+      var wrp = $wrapper.find('.search > .wrp');
+      $wrapper.find('.search > .title').on('click', function(){
+        var self = $(this);
+        var icon = self.children('.icon'); 
+        wrp.toggle();
+        if(wrp.css('display') === 'block') {
+          if(!init) {
+            // authors input controller
+            author_input($wrapper.find('.search .node108 .row input[type="text"]'));
+
+            // active_in locations input controller
+            $wrapper.find('.search .node124_2 .tags-input').select2({
+              tags: true
+            });
+
+            init = true;
+          }
+          icon.html(icon.attr('data-up'));
+        }
+        else
+          icon.html(icon.attr('data-down'));
+      });
+      if($wrapper.find('.search').hasClass('init'))
+         $wrapper.find('.search > .title').trigger('click');
+    }
   }
 
   /* /author/add    

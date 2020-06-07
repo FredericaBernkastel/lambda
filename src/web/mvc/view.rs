@@ -436,6 +436,7 @@ impl View {
               }
             }
           }
+          (self.mar_author_search(None))
           (mar_navigation)
           .table {
             .row.head {
@@ -1049,6 +1050,130 @@ impl View {
           }
         }
       }
+    }
+  }
+
+  fn mar_author_search(&self, request: Option<model::authors_SearchOpts>) -> Markup {
+    let classname = "init"; //if request.is_none() { "" } else { "init" };
+    let request = request.unwrap_or_default();
+
+    html! {
+      .search.(classname) {
+        .title {
+          "Advanced search"
+          .icon
+            data-up=(self.svg_sprite("angle-up", "", "").into_string())
+            data-down=(self.svg_sprite("angle-down", "", "").into_string()) {
+            (self.svg_sprite("angle-down", "", ""))
+          }
+        }
+        .wrp {
+          .row1 {
+            .node108.boxed {
+              p.box-title { "Companion with" }
+              .items {
+                .row.title {
+                  .l { "Author(s)" }
+                  .r { "Indubitable" }
+                }
+                @for author in request.companions {
+                  (self.mar_author_row(Some(author)))
+                }
+                (self.mar_author_row(None))
+                div data-type="x-template" data=((self.mar_author_row(None)).into_string()) { }
+              }
+            }
+            .node122 {
+              .node122_1.boxed {
+                p.box-title { "Age" }
+                .rows {
+                  .row {
+                    .l { "Older than: " }
+                    .r { input#age_min type="number" min="0" max="10000" // :<
+                      value=(request.age_min.map(|x| x.to_string()).unwrap_or("".into())); }
+                  }
+                  .row {
+                    .l { "Younger than: " }
+                    .r { input#age_max type="number" min="0" max="10000"
+                      value=(request.age_max.map(|x| x.to_string()).unwrap_or("".into())); }
+                  }
+                }
+              }
+              .node122_1.boxed {
+                p.box-title { "Height" }
+                .rows {
+                  .row {
+                    .l { "Higher than: " }
+                    .r { input#height_min type="number" min="0" max="300"
+                      value=(request.height_min.map(|x| x.to_string()).unwrap_or("".into())); }
+                  }
+                  .row {
+                    .l { "Shorter than: " }
+                    .r { input#height_max type="number" min="0" max="300"
+                      value=(request.height_max.map(|x| x.to_string()).unwrap_or("".into())); }
+                  }
+                }
+              }
+            }
+            .node123 {
+              .node123_1.boxed {
+                p.box-title { "Handedness" }
+                select#handedness {
+                  @if request.handedness.is_some() {
+                    option hidden="" disabled="" value="" {  }
+                  } @else {
+                    option hidden="" disabled="" value="" selected="" {  }
+                  }
+                  @for variant in schema::Handedness::iter() {
+                    @if request.handedness == Some(variant) {
+                      option value=({variant as u8}) selected="" { (variant.to_string()) }
+                    } @else {
+                      option value=({variant as u8}) { (variant.to_string()) }
+                    }
+                  }
+                }
+              }
+              .node123_2.boxed {
+                @if request.social_has {
+                  input#social_has type="checkbox" checked="";
+                } @else {
+                  input#social_has type="checkbox";
+                }
+                label for="social_has" { "Has social network" }
+              }
+            }
+            .node124 {
+              .node124_1.boxed {
+                p.box-title { "Home city" }
+                input#home_city type="text" value=(request.home_city.unwrap_or("".into()));
+              }
+              .node124_2.boxed {
+                p.box-title {
+                  "Active in" br;
+                  span.small { "[country/city/street]" }
+                  .tags_wrp {
+                    select.tags-input multiple="" autocomplete="off"  {
+                      @for tag in request.active_in {
+                        option selected="" { (tag) }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          .actions-wrapper {
+            a href="#" {
+              span.action-btn#search {
+                "Search"
+                (self.svg_sprite("search", "", ""))
+              }
+            }
+          }
+        }
+      }
+
     }
   }
 }

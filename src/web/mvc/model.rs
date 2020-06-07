@@ -8,7 +8,6 @@ use crate::{
 use error_chain::bail;
 use lazy_static::lazy_static;
 use maud::Markup;
-use num_traits::FromPrimitive;
 use path_tree::PathTree;
 use rusqlite::params;
 use serde_json::json;
@@ -457,7 +456,7 @@ impl Model {
                   time: row
                     .get::<_, Option<i64>>(1)?
                     .map_or("".into(), |x| util::format_timestamp(x as u64, "%H:%M")),
-                  shift_time: schema::ShiftTime::from_u8(row.get(2)?)
+                  shift_time: serde_json::from_value(row.get::<_, u8>(2)?.into())
                     .unwrap_or(schema::ShiftTime::Afternoon),
                   intervening: row.get(3)?,
                   notes: row.get(4)?,
@@ -595,7 +594,7 @@ impl Model {
                   datetime: row.get(2)?,
                   shift_time: row
                     .get::<_, Option<u8>>(3)?
-                    .map(schema::ShiftTime::from_u8)
+                    .map(|x| serde_json::from_value(x.into()).ok())
                     .flatten(),
                   intervening: row.get(4)?,
                   companions: row.get(5)?,
@@ -771,7 +770,7 @@ impl Model {
                 height: row
                   .get::<_, Option<u32>>(2)?
                   .map_or("".into(), |x| x.to_string()),
-                handedness: schema::Handedness::from_u8(row.get(3)?)
+                handedness: serde_json::from_value(row.get::<_, u8>(3)?.into())
                   .unwrap_or(schema::Handedness::RightHanded),
                 home_city: row.get(4)?,
                 social_networks: row.get(5)?,
@@ -850,7 +849,7 @@ impl Model {
               name: row.get(0)?,
               age: row.get(1)?,
               height: row.get(2)?,
-              handedness: schema::Handedness::from_u8(row.get(3)?),
+              handedness: serde_json::from_value(row.get::<_, u8>(3)?.into()).ok(),
               home_city: row.get(4)?,
               social_networks: row.get(5)?,
               notes: row.get(6)?,
@@ -1068,4 +1067,17 @@ pub struct graffitis_SearchOpts {
   pub authors_number: Option<u32>,
   pub authors: Vec<graffiti_Author>,
   pub tags: Vec<String>,
+}
+
+#[derive(Default, Clone, serde::Deserialize)]
+pub struct authors_SearchOpts {
+  pub companions: Vec<graffiti_Author>,
+  pub age_min: Option<u32>,
+  pub age_max: Option<u32>,
+  pub height_min: Option<u32>,
+  pub height_max: Option<u32>,
+  pub handedness: Option<schema::Handedness>,
+  pub social_has: bool,
+  pub home_city: Option<String>,
+  pub active_in: Vec<String>,
 }
