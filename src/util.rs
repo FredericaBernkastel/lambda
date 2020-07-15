@@ -3,6 +3,7 @@ use chrono::{prelude::DateTime, Utc};
 use error_chain::bail;
 use maud::{html, Markup};
 use sha2::{Digest, Sha256};
+use std::io::Read;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub fn get_timestamp() -> u64 {
@@ -129,4 +130,13 @@ pub fn datetime_variable(datetime: &str) -> Option<i64> {
     )
     .timestamp(),
   )
+}
+
+pub fn b64_gunzip_deserialize_t<'a, T: serde::Deserialize<'a>>(data: &str) -> Result<T> {
+  let base64 = base64::decode_config(data, base64::URL_SAFE)?;
+  let gz = flate2::read::GzDecoder::new(base64.as_slice())
+    // zip bomb DoS
+    .take(16 * 1024);
+  let mut de = serde_json::Deserializer::from_reader(gz);
+  Ok(T::deserialize(&mut de)?)
 }

@@ -422,6 +422,7 @@ impl View {
     &self,
     authors: Vec<model::authors_Author>,
     mar_navigation: Markup,
+    search_opts: Option<model::authors_SearchOpts>,
   ) -> Result<Markup> {
     Ok(html! {
       (self.mar_header()?)
@@ -436,7 +437,7 @@ impl View {
               }
             }
           }
-          (self.mar_author_search(None))
+          (self.mar_author_search(search_opts))
           (mar_navigation)
           .table {
             .row.head {
@@ -1054,7 +1055,7 @@ impl View {
   }
 
   fn mar_author_search(&self, request: Option<model::authors_SearchOpts>) -> Markup {
-    let classname = "init"; //if request.is_none() { "" } else { "init" };
+    let classname = if request.is_none() { "" } else { "init" };
     let request = request.unwrap_or_default();
 
     html! {

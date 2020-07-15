@@ -1,7 +1,8 @@
 'use strict';
+/* global __glob, $, gzip, base64 */
 
 $(function(){
-  var __path_t    = __glob.path_t,
+  let __path_t    = __glob.path_t,
       __root_url  = __glob.root_url,
       __rpc       = __glob.rpc,
       __cors_h    = __glob.cors_h;
@@ -36,7 +37,7 @@ $(function(){
 
   //====================== popups
   function display_error(message){
-    var popup = $('.popup-wrapper#error');
+    let popup = $('.popup-wrapper#error');
     popup.find('.message').html(message);
     popup.find('.action-btn#close')
       .off('click')
@@ -45,10 +46,10 @@ $(function(){
       });
     popup.css('display', 'flex');
     return popup;
-  };
+  }
 
   function display_warning(message, callback){
-    var popup = $('.popup-wrapper#warning');
+    let popup = $('.popup-wrapper#warning');
     popup.find('.message').html(message);
     popup.find('.action-btn#cancel')
       .off('click')
@@ -58,7 +59,7 @@ $(function(){
     popup.find('.action-btn#ok')
       .off('click')
       .on('click', function(){
-        var result = callback();
+        let result = callback();
         if(result !== false)
           popup.css('display', 'none');
       });
@@ -68,7 +69,7 @@ $(function(){
 
   // i hate dynamic types
   function null_norm(x) {
-    if (x === '' || x === undefined || x === NaN)
+    if (x === '' || x === undefined || isNaN(x))
       return null;
     return x;
   }
@@ -76,10 +77,10 @@ $(function(){
   //====================== images upload
   function image_upload_ctr(__rpc_fn, $wrapper) {
 
-    var mutex = new Mutex();
+    let mutex = new Mutex();
 
     // images iface controller
-    var image_controls = function(self){
+    let image_controls = function(self){
       function check_class(self){
         return self.hasClass('image') && !self.hasClass('processing') && !self.hasClass('add');
       }
@@ -87,13 +88,13 @@ $(function(){
         return;
 
       self.find('.controls .sh .shl').on('click', function(){
-        var prev = self.prev();
+        let prev = self.prev();
         if(prev.length)
           if(check_class(prev))
             self.insertBefore(prev);
       });
       self.find('.controls .sh .shr').on('click', function(){
-        var next = self.next();
+        let next = self.next();
         if(next.length)
           if(check_class(next))
             self.insertAfter(next);
@@ -114,36 +115,35 @@ $(function(){
     });
 
     $wrapper.find('input#openfiledlg').on('change', function(evt){
-      var files = evt.target.files; // FileList object
+      let files = evt.target.files; // FileList object
       if(files.length === 0)
         return;
 
-      var self = this;
+      let self = this;
 
       mutex.get();
 
       // check file size
-      for(var i = 0, f; f = files[i]; i++)
+      for(let i = 0, f; f = files[i]; i++)
         if(f.size > 10 * 1024 * 1024){
           display_error('Maximum file size exceeded (10MB)');
           mutex.release();
           return
         }
 
-      for (var i = 0, f; f = files[i]; i++)
+      for (let i = 0, f; f = files[i]; i++)
         if (!(f.type === 'image/jpeg')){
           display_error('Unsupported image type');
           mutex.release();
           return;
         }
 
-
-      var eventCounter = 0;
-      var eventResults = [];
+      let eventCounter = 0;
+      let eventResults = [];
 
       // Loop through the FileList
-      for (var i = 0, f; f = files[i]; i++) {
-        var reader = new FileReader();
+      for (let i = 0, f; f = files[i]; i++) {
+        let reader = new FileReader();
         reader.onload = (function(i) {
           return function(e) {
             eventCounter++;
@@ -156,13 +156,13 @@ $(function(){
         reader.readAsDataURL(f);
       }
 
-      var promise_all = function(){
+      let promise_all = function(){
 
         self.value = '';
 
         // add thumbnails
         eventResults.forEach(function(file, i, array){
-          var $tpl = $($wrapper.find('.image.add *[data-type="x-template"]').attr('data'));
+          let $tpl = $($wrapper.find('.image.add *[data-type="x-template"]').attr('data'));
           $tpl.find('img').get(0).src = file;
           $tpl
             .addClass('processing')
@@ -184,15 +184,15 @@ $(function(){
               function _finally(){
                 mutex.release();
                 $wrapper.find('.image.processing').remove();
-              };
-              var data = JSON.parse(data);
+              }
+              data = JSON.parse(data);
               switch(data.result){
                 case rpc.InvalidRequest:
                 case rpc.InternalError: {
                   display_error('Image upload failed (server error)');
                   _finally();
                   break;
-                };
+                }
                 case rpc.Success: {
                   eventResults[i].ref
                     .attr('data-id', data['temp_id'])
@@ -219,11 +219,11 @@ $(function(){
 
   //====================== image presentation controller
   function image_presentation($wrapper, img_folder) {
-    var $img = $wrapper.children('img');
-    var $link_prev = $($wrapper.parents()[1]).find('.link-prev');
-    var $link_next = $($wrapper.parents()[1]).find('.link-next');
-    var link_state = function(i, length){
-      var ret;
+    let $img = $wrapper.children('img');
+    let $link_prev = $($wrapper.parents()[1]).find('.link-prev');
+    let $link_next = $($wrapper.parents()[1]).find('.link-next');
+    let link_state = function(i, length){
+      let ret;
       if (i === 0 && length > 1)
         ret = [false, true];
       else if (i > 0 && i < length - 1)
@@ -236,12 +236,12 @@ $(function(){
       $link_next.css('visibility', ret[1] ? 'visible' : 'hidden');
     };
     if ($wrapper.children('.images').length) {
-      var images = JSON.parse($wrapper.children('.images').html());
+      let images = JSON.parse($wrapper.children('.images').html());
       link_state(0, images.length);
 
-      var set_src = function(i) {
-        var hash = images[i];
-        var path = __root_url + 'static/img/' + img_folder + '/' + hash[0] + hash[1] + '/' + hash + '_p1.jpg';
+      let set_src = function(i) {
+        let hash = images[i];
+        let path = __root_url + 'static/img/' + img_folder + '/' + hash[0] + hash[1] + '/' + hash + '_p1.jpg';
         $img.attr('src', path);
         $img.attr('data-id', i);
         link_state(i, images.length);
@@ -255,8 +255,8 @@ $(function(){
       });
 
       $img.on('click', function(){
-        var self = $(this);
-        var src = self.attr('src').replace(/_p1\.jpg$/, '_p0.jpg');
+        let self = $(this);
+        let src = self.attr('src').replace(/_p1\.jpg$/, '_p0.jpg');
         if (src)
           $.fancybox.open({
             src: src
@@ -270,19 +270,19 @@ $(function(){
     if (graffitis.length === 0)
       return;
 
-    var api_key = __glob['gmaps_api_key'];
-    var iframe = document.createElement("iframe");
+    let api_key = __glob['gmaps_api_key'];
+    let iframe = document.createElement("iframe");
     iframe.setAttribute('allowFullScreen', '');
     iframe.onload = function() {
-      var doc = iframe.contentDocument;
+      let doc = iframe.contentDocument;
 
       iframe.contentWindow.showNewMap = function() {
-        var self = this;
-        var mapContainer =  doc.createElement('div');
+        let self = this;
+        let mapContainer =  doc.createElement('div');
         mapContainer.id = 'map';
         doc.body.appendChild(mapContainer);
 
-        var map = new self.google.maps.Map(mapContainer, {
+        let map = new self.google.maps.Map(mapContainer, {
           //center: new self.google.maps.LatLng(0, 0),
           //zoom: 5,
           mapTypeId: 'roadmap',
@@ -308,19 +308,19 @@ $(function(){
           ]
         });
 
-        var bounds = new self.google.maps.LatLngBounds();
+        let bounds = new self.google.maps.LatLngBounds();
 
-        var markers = graffitis.map(function(graffiti, i) {
-          var latlng = { lat: graffiti.coords[0], lng: graffiti.coords[1] };
+        let markers = graffitis.map(function(graffiti, i) {
+          let latlng = { lat: graffiti.coords[0], lng: graffiti.coords[1] };
           bounds.extend(latlng);
-          var marker = new self.google.maps.Marker({
+          let marker = new self.google.maps.Marker({
             position: latlng
             //map: map
           });
 
           if (graffiti.thumbnail) {
-            var thumbnail = __root_url + 'static/img/graffiti/' + graffiti.thumbnail[0] + graffiti.thumbnail[1] + '/' + graffiti.thumbnail + '_p2.jpg'
-            var infowindow = new self.google.maps.InfoWindow({
+            let thumbnail = __root_url + 'static/img/graffiti/' + graffiti.thumbnail[0] + graffiti.thumbnail[1] + '/' + graffiti.thumbnail + '_p2.jpg'
+            let infowindow = new self.google.maps.InfoWindow({
               content: '\
                 <div id="thumbnail">\
                   <img src="' + thumbnail + '">\
@@ -341,14 +341,14 @@ $(function(){
         });
 
         // Add a marker clusterer to manage the markers
-        var markerCluster = new self.MarkerClusterer(map, markers, {
+        let markerCluster = new self.MarkerClusterer(map, markers, {
           imagePath: __root_url + 'static/img/map/clusters/m',
           gridSize: 30
         });
 
         { // limit min zoom
-          var epsilon = 0.0125;
-          var center = bounds.getCenter();
+          let epsilon = 0.0125;
+          let center = bounds.getCenter();
           bounds.extend({lat: center.lat(), lng: center.lng() - epsilon});
           bounds.extend({lat: center.lat(), lng: center.lng() + epsilon});
         }
@@ -356,21 +356,21 @@ $(function(){
         map.fitBounds(bounds);
       }
 
-      var css = document.createElement('style');
+      let css = document.createElement('style');
       css.innerHTML = '                                                   \
         body { margin: 0; }                                               \
         #map { width: 100%; height: 100%; }                               \
           #map .gm-style .gm-style-iw-c { padding: 0; border-radius: 0; } \
       ';
 
-      var head = iframe.contentDocument.getElementsByTagName('head')[0];
+      let head = iframe.contentDocument.getElementsByTagName('head')[0];
       head.appendChild(css);
 
-      var script = document.createElement('script');
+      let script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = __root_url + 'static/markerclustererplus.min.js';
       script.onload = function() {
-        var script = document.createElement('script');
+        let script = document.createElement('script');
         script.type = 'text/javascript';
         script.src = 'https://maps.googleapis.com/maps/api/js?key=' + api_key + '&callback=showNewMap';
         doc.body.appendChild(script);
@@ -383,9 +383,9 @@ $(function(){
 
   //====================== author input controller
   function author_input($inputs) {
-    var author_focus_ctx = function() {
-      var self = $(this);
-      var select = $('<select />');
+    let author_focus_ctx = function() {
+      let self = $(this);
+      let select = $('<select />');
       {
         $(self.parents()[1]).after(select);
 
@@ -394,11 +394,10 @@ $(function(){
             type: 'POST',
             url: __rpc + 'search/author_names',
             data: function (params) {
-              var query = JSON.stringify({
+              return JSON.stringify({
                 'cors_h': __cors_h,
                 'term': params.term
               });
-              return query;
             },
             processResults: function (data) {
               return {
@@ -417,7 +416,7 @@ $(function(){
         select.val(self.attr('data-id'));
         select.select2('open');
         select.on('select2:close', function(){
-          var data = select.select2('data');
+          let data = select.select2('data');
           select.select2('destroy');
           select.remove();
           if (data.length) {
@@ -429,11 +428,11 @@ $(function(){
       }
     };
 
-    var author_input_ctx = function() {
-      var self = $(this);
-      var next = $(self.parents()[1]).next();
-      var value = self.val();
-      var is_last = next.is('[data-type="x-template"]');
+    let author_input_ctx = function() {
+      let self = $(this);
+      let next = $(self.parents()[1]).next();
+      let value = self.val();
+      let is_last = next.is('[data-type="x-template"]');
 
       if (value === '' && !is_last) {
         $(self.parents()[1]).remove();
@@ -441,7 +440,7 @@ $(function(){
       }
 
       if (value !== '' && is_last){
-        var tpl = $(
+        let tpl = $(
             $(self.parents()[2])
               .find('[data-type="x-template"]')
               .attr('data')
@@ -454,8 +453,8 @@ $(function(){
         $(self.parents()[1]).after(tpl);
       }
     };
-    var author_clear_ctx = function() {
-      var self = $(this);
+    let author_clear_ctx = function() {
+      let self = $(this);
       self
         .siblings('input[type="text"]')
         .val('')
@@ -469,7 +468,7 @@ $(function(){
       .on('click', author_clear_ctx);
   }
 
-  //====================== graffiti tags input controller
+  //====================== graffiti search tags input controller
   function graffiti_tags_input($wrapper) {
     $wrapper.select2({
       tags: true,
@@ -477,11 +476,10 @@ $(function(){
         type: 'POST',
         url: __rpc + 'search/tag_names',
         data: function (params) {
-          var query = JSON.stringify({
+          return JSON.stringify({
             'cors_h': __cors_h,
             'term': params.term
           });
-          return query;
         },
         processResults: function (data) {
           return {
@@ -501,10 +499,10 @@ $(function(){
   //====================== graffiti search controller
   function graffiti_search($wrapper) {
     $wrapper.find('.actions-wrapper #search').on('click', function(){
-      var authors = function(){
-        var result = [];
+      let authors = function(){
+        let result = [];
         $wrapper.find('.node108 .row input[data-id]').map(function(i, x){
-          var self = $(x);
+          let self = $(x);
           result.push({
             id: +self.attr('data-id'),
             indubitable: $(self.parents()[1]).find('input[type="checkbox"]').prop('checked'),
@@ -514,14 +512,14 @@ $(function(){
         return result;
       }();
 
-      var tags = $wrapper
+      let tags = $wrapper
         .find('.node121_1 .tags-input')
         .select2('data')
         .map(function(x) {
           return x.text;
         });
 
-      var data = JSON.stringify({
+      let data = JSON.stringify({
         'country': null_norm($wrapper.find('#country').val()),
         'city': null_norm($wrapper.find('#city').val()),
         'street': null_norm($wrapper.find('#street').val()),
@@ -534,9 +532,54 @@ $(function(){
         'tags': tags
       });
 
-      var data = base64.bytesToBase64(gzip.zip(data, {level: 9})).replace(/\+/g, '-').replace(/\//g, '_');
+      data = base64.bytesToBase64(gzip.zip(data, {level: 9})).replace(/\+/g, '-').replace(/\//g, '_');
 
       window.location = __root_url + 'views/graffitis/search/' + data;
+    });
+  }
+
+  //====================== author search controller
+  function author_search($wrapper) {
+    $wrapper.find('.actions-wrapper #search').on('click', function(){
+      let authors = function(){
+        let result = [];
+        $wrapper.find('.node108 .row input[data-id]').map(function(i, x){
+          let self = $(x);
+          result.push({
+            id: +self.attr('data-id'),
+            indubitable: $(self.parents()[1]).find('input[type="checkbox"]').prop('checked'),
+            name: self.val()
+          })
+        });
+        return result;
+      }();
+
+      let active_in = $wrapper
+        .find('.node124_2 .tags-input')
+        .select2('data')
+        .map(function(x) {
+          return x.text;
+        });
+
+      let data = {
+        'companions': authors,
+        'age_min': null_norm(parseInt($wrapper.find('#age_min').val())),
+        'age_max': null_norm(parseInt($wrapper.find('#age_max').val())),
+        'height_min': null_norm(parseInt($wrapper.find('#height_min').val())),
+        'height_max': null_norm(parseInt($wrapper.find('#height_max').val())),
+        'handedness': null_norm(parseInt($wrapper.find('#handedness').val())),
+        'social_has': $wrapper.find('#social_has').prop('checked'),
+        'home_city': null_norm($wrapper.find('#home_city').val()),
+        'active_in': active_in
+      };
+      data = base64.bytesToBase64(
+        gzip.zip(
+          JSON.stringify(data), 
+          {level: 9}
+        )
+      ).replace(/\+/g, '-').replace(/\//g, '_');
+
+      window.location = __root_url + 'views/authors/search/' + data;
     });
   }
   
@@ -547,14 +590,14 @@ $(function(){
   /* any page
    * ##########################################*/
   {
-    var send_mutex = false;
+    let send_mutex = false;
 
     $('.header .nav-menu .user .logout').on('click', function(){
       if(send_mutex)
         return;
       send_mutex = true;
 
-      var data = {
+      let data = {
         'cors_h': __cors_h
       };
 
@@ -564,7 +607,7 @@ $(function(){
         data: JSON.stringify(data),
         success: function(data){
           send_mutex = false;
-          var data = JSON.parse(data);
+          data = JSON.parse(data);
           if (data.result === rpc.Success)
             window.location.reload(false);
         },
@@ -578,17 +621,17 @@ $(function(){
   /* /login                     
    * ##########################################*/
   if (__path_t === '/login') {
-    var send_mutex = false;
-    var $wrapper = $('.login');
+    let send_mutex = false;
+    let $wrapper = $('.login');
 
     $wrapper.find('#submit').on('click', function(){
       if(send_mutex)
         return;
 
-      var self = $(this);
+      let self = $(this);
 
-      var validate = function(){
-        var errors = [];
+      let validate = function(){
+        let errors = [];
         if(!$wrapper.find('input#login').prop('value'))
           errors.push('input#login');
         if(!$wrapper.find('input#password').prop('value'))
@@ -599,7 +642,7 @@ $(function(){
 
         return !errors.length;
       }
-      var si_error = function(message){
+      let si_error = function(message){
         $wrapper.find('.si-error').html(message).css('display', 'block');
       }
 
@@ -607,13 +650,13 @@ $(function(){
         send_mutex = true;
 
         self.html(self.attr('data-spinner'));
-        var data = {
+        let data = {
           'login': $wrapper.find('input#login').prop('value'),
           'password': $wrapper.find('input#password').prop('value'),
           'cors_h': __cors_h
         }
 
-        var default_error   = 'Server error!';
+        let default_error   = 'Server error!';
 
         $.ajax({
           type: 'POST',
@@ -622,7 +665,7 @@ $(function(){
           success: function(data){
             send_mutex = false;
             self.html(self.attr('data-html'));
-            var data = JSON.parse(data);
+            data = JSON.parse(data);
 
             switch(data.result){
               case rpc.InvalidLogin: si_error('Invalid login or password!'); break;
@@ -640,7 +683,7 @@ $(function(){
     });
 
     $wrapper.find('input#login, input#password').on('keydown', function(e){
-      if(e.keyCode == 13){
+      if(e.keyCode === 13){
         e.preventDefault();
         $wrapper.find('#submit').trigger('click');
       }
@@ -650,9 +693,9 @@ $(function(){
   /* /home                     
   * ##########################################*/
   if (__path_t === '/home') {
-    var $wrapper = $('.page-home');
+    let $wrapper = $('.page-home');
     {
-      var $map = $wrapper.find('.node104 > .map');
+      let $map = $wrapper.find('.node104 > .map');
       map_presentation($map, JSON.parse($map.attr('data')));
     }
   }
@@ -663,29 +706,29 @@ $(function(){
    * /graffitis/search/:x-data/page/:page      
    * ##########################################*/
   if (__path_t === '/graffitis' || __path_t === '/graffitis/page/:page' || __path_t === '/graffitis/search/:x-data' || __path_t === '/graffitis/search/:x-data/page/:page') {
-    $wrapper = $('.page-graffitis');
+    let $wrapper = $('.page-graffitis');
 
     // hotkeys
     $(document)
       .on('keydown', null, 'left', function(){
-        var link = $wrapper.find('.navigation .n_back a');
+        let link = $wrapper.find('.navigation .n_back a');
         if(link.length)
           link[0].click()
       })
       .on('keydown', null, 'right', function(){
-        var link = $wrapper.find('.navigation .n_next a');
+        let link = $wrapper.find('.navigation .n_next a');
         if(link.length)
           link[0].click()
       })
 
     // search
     {
-      var init = false;
+      let init = false;
 
-      var wrp = $wrapper.find('.search > .wrp');
+      let wrp = $wrapper.find('.search > .wrp');
       $wrapper.find('.search > .title').on('click', function(){
-        var self = $(this);
-        var icon = self.children('.icon'); 
+        let self = $(this);
+        let icon = self.children('.icon'); 
         wrp.toggle();
         if(wrp.css('display') === 'block') {
           if(!init) {
@@ -714,10 +757,10 @@ $(function(){
    * /graffiti/:id/edit                
    * ##########################################*/
   if (__path_t === '/graffiti/add' || __path_t === '/graffiti/:id/edit') {
-    var send_mutex = false;
-    var $wrapper = $('.page-graffiti-add');
+    let send_mutex = false;
+    let $wrapper = $('.page-graffiti-add');
 
-    var __rpc_fn;
+    let __rpc_fn;
     switch (__path_t) {
       case '/graffiti/add':      __rpc_fn = __rpc + 'graffiti/add'; break;
       case '/graffiti/:id/edit': __rpc_fn = __rpc + 'graffiti/edit'; break;
@@ -730,9 +773,9 @@ $(function(){
         return;
       send_mutex = true;
 
-      var datetime = function() {
-        var date = $wrapper.find('#date').val();
-        var time = $wrapper.find('#time').val();
+      let datetime = function() {
+        let date = $wrapper.find('#date').val();
+        let time = $wrapper.find('#time').val();
         if (!date) return null;
 
         datetime = date + 'T' + (time ? time : '00:00:00') + 'Z';
@@ -741,23 +784,23 @@ $(function(){
         return datetime;
       }();
 
-      var gps = function() {
-        var data = $wrapper
+      let gps = function() {
+        let data = $wrapper
           .find('#gps')
           .val()
           .split(',')
           .map(function(x){ return +(x.trim()); });
 
-        var e = {lat: null, long: null};
+        let e = {lat: null, long: null};
         if(data.length !== 2) return e;
         if(!data[0] || !data[1]) return e;
         return { lat: data[0], long: data[1] };
       }();
 
-      var authors = function(){
-        var result = [];
+      let authors = function(){
+        let result = [];
         $wrapper.find('.node108 .row input[data-id]').map(function(i, x){
-          var self = $(x);
+          let self = $(x);
           result.push({
             id: +self.attr('data-id'),
             indubitable: $(self.parents()[1]).find('input[type="checkbox"]').prop('checked')
@@ -766,14 +809,14 @@ $(function(){
         return result;
       }();
 
-      var tags = $wrapper
+      let tags = $wrapper
         .find('.node112 .tags-input')
         .select2('data')
         .map(function(x) {
           return x.text;
         });
 
-      var data = {
+      let data = {
         'cors_h': __cors_h,
         'graffiti': {
           'complaint_id': $wrapper.find('#complaint_id').val(),
@@ -801,7 +844,7 @@ $(function(){
 
       data['images'] = [];
         $wrapper.find('.img_upload_wrp > .image:not(.processing):not(.add)').each(function(){
-          var id = $(this).attr('data-id');
+          let id = $(this).attr('data-id');
           if(id)
             data['images'].push(id);
         });
@@ -812,10 +855,10 @@ $(function(){
         data: JSON.stringify(data),
         success: function(response){
           send_mutex = false;
-          var response = JSON.parse(response);
+          response = JSON.parse(response);
 
           if (response.result === rpc.Success){
-            var id;
+            let id;
             if (__path_t === '/graffiti/:id/edit')
               id = +__glob.data['id'];
             else
@@ -839,19 +882,19 @@ $(function(){
   /* /graffiti/:id               
    * ##########################################*/
   if (__path_t === '/graffiti/:id') {
-    var send_mutex = false;
-    var $wrapper = $('.page-graffiti');
+    let send_mutex = false;
+    let $wrapper = $('.page-graffiti');
 
     image_presentation($wrapper.find('.graffiti-image'), 'graffiti');
     {
-      var $map = $wrapper.find('.node106 > .map');
+      let $map = $wrapper.find('.node106 > .map');
       map_presentation($map, JSON.parse($map.attr('data')));
     }
 
     $wrapper.find('.actions-wrapper #delete').on('click', function(){
       display_warning('Delete graffiti?', function(){
-        var send_mutex = true;
-        var data = {
+        send_mutex = true;
+        let data = {
           'cors_h': __cors_h,
           'id': +__glob.data['id']
         };
@@ -862,7 +905,7 @@ $(function(){
           data: JSON.stringify(data),
           success: function(response){
             send_mutex = false;
-            var response = JSON.parse(response);
+            response = JSON.parse(response);
 
             if (response.result === rpc.Success)
               window.location = __root_url + 'views/graffitis';
@@ -876,42 +919,50 @@ $(function(){
   }
 
   /* /authors           
-   * /authors/page/:page          
+   * /authors/page/:page       
+   * /authors/search/:x-data
+   * /authors/search/:x-data/page/:page   
    * ##########################################*/
-  if (__path_t === '/authors' || __path_t === '/authors/page/:page') {
-    var $wrapper = $('.page-authors');
+  if (__path_t === '/authors' || __path_t === '/authors/page/:page' || '/authors/search/:x-data' || '/authors/search/:x-data/page/:page') {
+    let $wrapper = $('.page-authors');
 
     // hotkeys
     $(document)
       .on('keydown', null, 'left', function(){
-        var link = $('.page-authors .navigation .n_back a');
+        let link = $('.page-authors .navigation .n_back a');
         if(link.length)
           link[0].click()
       })
       .on('keydown', null, 'right', function(){
-        var link = $('.page-authors .navigation .n_next a');
+        let link = $('.page-authors .navigation .n_next a');
         if(link.length)
           link[0].click()
       });
 
     // search
     {
-      var init = false;
+      let init = false;
 
-      var wrp = $wrapper.find('.search > .wrp');
+      let wrp = $wrapper.find('.search > .wrp');
       $wrapper.find('.search > .title').on('click', function(){
-        var self = $(this);
-        var icon = self.children('.icon'); 
+        let self = $(this);
+        let icon = self.children('.icon'); 
         wrp.toggle();
         if(wrp.css('display') === 'block') {
           if(!init) {
             // authors input controller
             author_input($wrapper.find('.search .node108 .row input[type="text"]'));
 
+            $wrapper.find(
+                '.search .node108 .row input[type="text"], \
+                 .search .node124_2 .tags-input').attr('disabled', '');
+
             // active_in locations input controller
             $wrapper.find('.search .node124_2 .tags-input').select2({
               tags: true
             });
+
+
 
             init = true;
           }
@@ -922,6 +973,9 @@ $(function(){
       });
       if($wrapper.find('.search').hasClass('init'))
          $wrapper.find('.search > .title').trigger('click');
+
+      // author search controller
+      author_search($wrapper.find('.search'));
     }
   }
 
@@ -929,10 +983,10 @@ $(function(){
    * /author/:id/edit                
    * ##########################################*/
   if (__path_t === '/author/add' || __path_t === '/author/:id/edit') {
-    var send_mutex = false;
-    var $wrapper = $('.page-author-add');
+    let send_mutex = false;
+    let $wrapper = $('.page-author-add');
 
-    var __rpc_fn;
+    let __rpc_fn;
     switch (__path_t) {
       case '/author/add':      __rpc_fn = __rpc + 'author/add'; break;
       case '/author/:id/edit': __rpc_fn = __rpc + 'author/edit'; break;
@@ -944,8 +998,8 @@ $(function(){
       if(send_mutex)
         return;
 
-      var validate = function(){
-        var errors = [];
+      let validate = function(){
+        let errors = [];
         if(!$wrapper.find('#name').val())
           errors.push('#name');
         errors.forEach(function(s){
@@ -959,7 +1013,7 @@ $(function(){
 
       send_mutex = true;
 
-      var data = {
+      let data = {
         'cors_h': __cors_h,
         'name': $wrapper.find('#name').val(),
         'age': +$wrapper.find('#age').val(),
@@ -978,7 +1032,7 @@ $(function(){
 
       data['images'] = [];
         $wrapper.find('.img_upload_wrp > .image:not(.processing):not(.add)').each(function(){
-          var id = $(this).attr('data-id');
+          let id = $(this).attr('data-id');
           if(id)
             data['images'].push(id);
         });
@@ -989,10 +1043,10 @@ $(function(){
         data: JSON.stringify(data),
         success: function(response){
           send_mutex = false;
-          var response = JSON.parse(response);
+          response = JSON.parse(response);
 
           if (response.result === rpc.Success){
-            var id;
+            let id;
             if (__path_t === '/author/:id/edit')
               id = +__glob.data['id'];
             else
@@ -1010,19 +1064,19 @@ $(function(){
   /* /author/:id               
    * ##########################################*/
   if (__path_t === '/author/:id') {
-    var send_mutex = false;
-    var $wrapper = $('.page-author');
+    let send_mutex = false;
+    let $wrapper = $('.page-author');
 
     image_presentation($wrapper.find('.author-image'), 'author');
     {
-      var $map = $wrapper.find('.node114_3 > .map');
+      let $map = $wrapper.find('.node114_3 > .map');
       map_presentation($map, JSON.parse($map.attr('data')));
     }
 
     $wrapper.find('.actions-wrapper #delete').on('click', function(){
       display_warning('Delete author?', function(){
-        var send_mutex = true;
-        var data = {
+        send_mutex = true;
+        let data = {
           'cors_h': __cors_h,
           'id': +__glob.data['id']
         };
@@ -1033,7 +1087,7 @@ $(function(){
           data: JSON.stringify(data),
           success: function(response){
             send_mutex = false;
-            var response = JSON.parse(response);
+            response = JSON.parse(response);
 
             if (response.result === rpc.Success)
               window.location = __root_url + 'views/authors';

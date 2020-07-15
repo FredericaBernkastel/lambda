@@ -43,6 +43,8 @@ pub async fn main(
         "/graffiti/:id/edit",
         "/authors",
         "/authors/page/:page",
+        "/authors/search/:x-data",
+        "/authors/search/:x-data/page/:page",
         "/author/add",
         "/author/:id",
         "/author/:id/edit",
@@ -79,24 +81,26 @@ pub async fn main(
             bail!("unauthorized");
           }
 
-          match path {
+          #[rustfmt::skip] match path {
             "/home" => model.m_home().await?,
 
-            "/graffitis" => model.m_graffitis().await?, // --------------
-            "/graffitis/page/:page" => model.m_graffitis().await?, // ---
-            "/graffitis/search/:x-data" => model.m_graffitis_search().await?, // -------------
-            "/graffitis/search/:x-data/page/:page" => model.m_graffitis_search().await?, // --
+            "/graffitis" | 
+            "/graffitis/page/:page" => model.m_graffitis().await?,
+            "/graffitis/search/:x-data" | 
+            "/graffitis/search/:x-data/page/:page" => model.m_graffitis_search().await?,
 
-            "/graffiti/add" => model.m_graffiti_edit().await?, // -------
-            "/graffiti/:id" => model.m_graffiti().await?,      //       |
-            "/graffiti/:id/edit" => model.m_graffiti_edit().await?, // --
+            "/graffiti/add" |
+            "/graffiti/:id/edit" => model.m_graffiti_edit().await?,
+            "/graffiti/:id" => model.m_graffiti().await?,
 
-            "/authors" => model.m_authors().await?, // ------------------
-            "/authors/page/:page" => model.m_authors().await?, // -------
+            "/authors" | 
+            "/authors/page/:page" => model.m_authors().await?,
+            "/authors/search/:x-data" | 
+            "/authors/search/:x-data/page/:page" => model.m_authors_search().await?,
 
-            "/author/add" => model.m_author_edit().await?, //------------
-            "/author/:id" => model.m_author().await?,      //           |
-            "/author/:id/edit" => model.m_author_edit().await?, // ------
+            "/author/add" |
+            "/author/:id/edit" => model.m_author_edit().await?,
+            "/author/:id" => model.m_author().await?,
 
             "/tags" => model.m_tags().await?,
             "/help" => model.m_help().await?,
@@ -260,19 +264,12 @@ impl Model {
   }
 
   async fn m_graffitis_search(&self) -> Result<Markup> {
-    use std::io::Read;
     type Graffiti = graffitis_Graffiti;
 
     let page: i64 = self.get_data.get("page").unwrap_or(&"1".into()).parse()?;
     let data = self.get_data.get("x-data")?;
 
-    let request: graffitis_SearchOpts = {
-      let base64 = base64::decode_config(data, base64::URL_SAFE)?;
-      let mut gz = flate2::read::GzDecoder::new(base64.as_slice());
-      let mut s = String::new();
-      gz.read_to_string(&mut s)?;
-      serde_json::from_str(&s)?
-    };
+    let request = util::b64_gunzip_deserialize_t::<graffitis_SearchOpts>(data)?;
 
     let (graffitis, total) = web::block(self.db_pool.clone(), {
       let rows_per_page = self.config.web.rows_per_page;
@@ -290,12 +287,9 @@ impl Model {
                  left join graffiti_image b on b.graffiti_id = e.id and 
                                                b.`order` = 0
                  left join graffiti_author c on c.graffiti_id = e.id
-                 left join graffiti_tag d on d.graffiti_id = e.id",
+                 left join graffiti_tag d on d.graffiti_id = e.id
+           where true",
         );
-        dyn_stmt.push(" where true").bind(vec![
-          (":page".into(), Box::new(page - 1)),
-          (":limit".into(), Box::new(rows_per_page)),
-        ]);
 
         if let Some(country) = request.country {
           dyn_stmt
@@ -365,11 +359,16 @@ impl Model {
           }
           dyn_stmt.push("))");
         }
-        dyn_stmt.push(
-          " group by e.id
+        dyn_stmt
+          .push(
+            " group by e.id
             order by e.id desc
             limit :page * :limit, :limit",
-        );
+          )
+          .bind(vec![
+            (":page".into(), Box::new(page - 1)),
+            (":limit".into(), Box::new(rows_per_page)),
+          ]);
 
         let mut dyn_stmt_count = util::DynQuery::new();
         dyn_stmt_count.push(&format!("select count( * ) from ({})", &dyn_stmt.sql));
@@ -738,7 +737,141 @@ impl Model {
       total as i64,
     )?;
 
-    self.v_authors(authors, mar_navigation)
+    self.v_authors(authors, mar_navigation, None)
+  }
+
+  async fn m_authors_search(&self) -> Result<Markup> {
+    type Author = authors_Author;
+
+    let page: i64 = self.get_data.get("page").unwrap_or(&"1".into()).parse()?;
+    let data = self.get_data.get("x-data")?;
+
+    let request = util::b64_gunzip_deserialize_t::<authors_SearchOpts>(data)?;
+
+    let (authors, total) = web::block(self.db_pool.clone(), {
+      let rows_per_page = self.config.web.rows_per_page;
+      let request = request.clone();
+      move |db| -> Result<_> {
+        let mut dyn_stmt = util::DynQuery::new();
+        dyn_stmt.push(
+          "select id,
+                 name,
+                 age,
+                 home_city,
+                 views
+            from author a
+           where true",
+        );
+        if let Some(age_min) = request.age_min {
+          dyn_stmt
+            .push(" and a.age >= :age_min")
+            .bind(vec![(":age_min".into(), Box::new(age_min))]);
+        }
+        if let Some(age_max) = request.age_max {
+          dyn_stmt
+            .push(" and a.age < :age_max")
+            .bind(vec![(":age_max".into(), Box::new(age_max))]);
+        }
+        if let Some(height_min) = request.height_min {
+          dyn_stmt
+            .push(" and a.height >= :height_min")
+            .bind(vec![(":height_min".into(), Box::new(height_min))]);
+        }
+        if let Some(height_max) = request.height_max {
+          dyn_stmt
+            .push(" and a.height < :height_max")
+            .bind(vec![(":height_max".into(), Box::new(height_max))]);
+        }
+        if let Some(handedness) = request.handedness {
+          dyn_stmt
+            .push(" and a.handedness = :handedness")
+            .bind(vec![(":handedness".into(), Box::new(handedness as u8))]);
+        }
+        if request.social_has {
+          dyn_stmt.push(" and a.social_networks <> ''");
+        }
+        if let Some(home_city) = request.home_city {
+          dyn_stmt
+            .push(" and a.home_city like :home_city")
+            .bind(vec![(
+              ":home_city".into(),
+              Box::new(format!("%{}%", home_city)),
+            )]);
+        }
+        dyn_stmt
+          .push(
+            " order by a.id desc
+            limit :page * :limit, :limit",
+          )
+          .bind(vec![
+            (":page".into(), Box::new(page - 1)),
+            (":limit".into(), Box::new(rows_per_page)),
+          ]);
+
+        let mut dyn_stmt_count = util::DynQuery::new();
+        dyn_stmt_count.push(&format!("select count( * ) from ({})", &dyn_stmt.sql));
+
+        dyn_stmt.sql = format!(
+          "with sub1 as ({})
+            select sub1.id as `0`,
+                   sub1.name as `1`,
+                   sub1.age as `2`,
+                   sub1.home_city as `3`,
+                   sub1.views as `4`,
+                   a.hash as `5`,
+                   count(b.author_id) as `6`
+              from sub1
+                   left join author_image a on a.author_id = sub1.id and
+                                               a.`order` = 0
+                   left join graffiti_author b on b.author_id = sub1.id
+             group by sub1.id
+             order by sub1.id desc",
+          dyn_stmt.sql
+        );
+
+        let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![];
+        let mut params_count: Vec<(&str, &dyn rusqlite::ToSql)> = vec![];
+        for (k, v) in &dyn_stmt.params {
+          params.push((k, v));
+          match k.as_str() {
+            ":page" => params_count.push((k, &0)),
+            ":limit" => params_count.push((k, &-1)),
+            _ => params_count.push((k, v)),
+          };
+        }
+
+        Ok((
+          //graffitiis
+          db.prepare(&dyn_stmt.sql)?
+            .query_map_named(params.as_slice(), |row| {
+              Ok(Author {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                age: row.get(2)?,
+                home_city: row.get(3)?,
+                views: row.get(4)?,
+                thumbnail: row.get(5)?,
+                graffiti: row.get(6)?,
+              })
+            })?
+            .filter_map(std::result::Result::ok)
+            .collect(),
+          // total
+          db.prepare(&dyn_stmt_count.sql)?
+            .query_row_named(params_count.as_slice(), |row| row.get::<_, i64>(0))?,
+        ))
+      }
+    })
+    .await?;
+
+    let mar_navigation = self.mar_navigation(
+      &format!("{{}}views/authors/search/{}/page/{{}}", data),
+      page,
+      self.config.web.rows_per_page as i64,
+      total,
+    )?;
+
+    self.v_authors(authors, mar_navigation, Some(request))
   }
 
   async fn m_author_edit(&self) -> Result<Markup> {
@@ -1069,7 +1202,7 @@ pub struct graffitis_SearchOpts {
   pub tags: Vec<String>,
 }
 
-#[derive(Default, Clone, serde::Deserialize)]
+#[derive(Default, Debug, Clone, serde::Deserialize)]
 pub struct authors_SearchOpts {
   pub companions: Vec<graffiti_Author>,
   pub age_min: Option<u32>,
