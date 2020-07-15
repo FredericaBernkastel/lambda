@@ -557,7 +557,10 @@ $(function(){
       data.tags = tags;
       data = JSON.stringify(data);
 
-      data = base64.bytesToBase64(gzip.zip(data, {level: 9})).replace(/\+/g, '-').replace(/\//g, '_');
+      data = base64.bytesToBase64(
+        gzip.zip(StringToUTF8Array(data), {level: 9}))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_');
 
       window.location = __root_url + 'views/graffitis/search/' + data;
     });
@@ -599,7 +602,7 @@ $(function(){
 
       data = base64.bytesToBase64(
         gzip.zip(
-          JSON.stringify(data), 
+            StringToUTF8Array(JSON.stringify(data)),
           {level: 9}
         )
       ).replace(/\+/g, '-').replace(/\//g, '_');
@@ -942,6 +945,17 @@ $(function(){
         });
       });
     });
+
+    $wrapper.find('.node102 .tags > *').on('click', function (e) {
+      let query = { ...graffiti_search_schema }
+      query.tags = [$(this).html()];
+      query = JSON.stringify(query);
+      query = base64.bytesToBase64(gzip.zip(StringToUTF8Array(query), {level: 9}))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+
+      $(this).attr('href', __root_url + 'views/graffitis/search/' + query)
+    })
   }
 
   /* /authors           
@@ -1134,7 +1148,7 @@ $(function(){
       let query = { ...graffiti_search_schema }
       query.tags = [$(this).html()];
       query = JSON.stringify(query);
-      query = base64.bytesToBase64(gzip.zip(query, {level: 9}))
+      query = base64.bytesToBase64(gzip.zip(StringToUTF8Array(query), {level: 9}))
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
 
