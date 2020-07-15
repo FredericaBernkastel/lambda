@@ -687,7 +687,7 @@ impl View {
     })
   }
 
-  pub fn v_tags(&self) -> Result<Markup> {
+  pub fn v_tags(&self, tags: Vec<String>) -> Result<Markup> {
     Ok(html! {
       (self.mar_header()?)
 
@@ -714,10 +714,8 @@ impl View {
           .node119 {
             p { b { "List of graffiti tags" } }
             .tags {
-              @for _ in 1..=10 {
-                a href="#" { "vandalism" }
-                a href="#" { "political" }
-                a href="#" { "motto" }
+              @for tag in tags {
+                a href="#" { (tag) }
               }
             }
           }

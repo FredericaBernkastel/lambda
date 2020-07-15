@@ -1118,7 +1118,20 @@ impl Model {
   }
 
   async fn m_tags(&self) -> Result<Markup> {
-    self.v_tags()
+    let tags = web::block(self.db_pool.clone(), move |db| -> Result<_> {
+      Ok(
+        db.prepare(
+          "select name
+          from tag
+         order by name asc",
+        )?
+        .query_map(params![], |row| Ok(row.get(0)?))?
+        .filter_map(std::result::Result::ok)
+        .collect(): Vec<String>,
+      )
+    })
+    .await?;
+    self.v_tags(tags)
   }
 
   async fn m_help(&self) -> Result<Markup> {

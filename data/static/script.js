@@ -35,6 +35,31 @@ $(function(){
     InvalidRequest: 102
   };
 
+  const graffiti_search_schema = {
+    country: null,
+    city: null,
+    street: null,
+    place: null,
+    property: null,
+    date_before: null,
+    date_after: null,
+    authors_number: null,
+    authors: [],
+    tags: []
+  };
+
+  const author_search_schema = {
+    companions: [],
+    age_min: null,
+    age_max: null,
+    height_min: null,
+    height_max: null,
+    handedness: null,
+    social_has: false,
+    home_city: null,
+    active_in: []
+  };
+
   //====================== popups
   function display_error(message){
     let popup = $('.popup-wrapper#error');
@@ -69,7 +94,7 @@ $(function(){
 
   // i hate dynamic types
   function null_norm(x) {
-    if (x === '' || x === undefined || isNaN(x))
+    if (x === '' || x === undefined)
       return null;
     return x;
   }
@@ -519,18 +544,18 @@ $(function(){
           return x.text;
         });
 
-      let data = JSON.stringify({
-        'country': null_norm($wrapper.find('#country').val()),
-        'city': null_norm($wrapper.find('#city').val()),
-        'street': null_norm($wrapper.find('#street').val()),
-        'place': null_norm($wrapper.find('#place').val()),
-        'property': null_norm($wrapper.find('#property').val()),
-        'date_before': null_norm($wrapper.find('#date_before').val()),
-        'date_after': null_norm($wrapper.find('#date_after').val()),
-        'authors_number': null_norm(parseInt($wrapper.find('#authors_number').val())),
-        'authors': authors,
-        'tags': tags
-      });
+      let data = { ...graffiti_search_schema };
+      data.country = null_norm($wrapper.find('#country').val());
+      data.city = null_norm($wrapper.find('#city').val());
+      data.street = null_norm($wrapper.find('#street').val());
+      data.place = null_norm($wrapper.find('#place').val());
+      data.property = null_norm($wrapper.find('#property').val());
+      data.date_before = null_norm($wrapper.find('#date_before').val());
+      data.date_after = null_norm($wrapper.find('#date_after').val());
+      data.authors_number = null_norm(parseInt($wrapper.find('#authors_number').val()));
+      data.authors = authors;
+      data.tags = tags;
+      data = JSON.stringify(data);
 
       data = base64.bytesToBase64(gzip.zip(data, {level: 9})).replace(/\+/g, '-').replace(/\//g, '_');
 
@@ -561,17 +586,17 @@ $(function(){
           return x.text;
         });
 
-      let data = {
-        'companions': authors,
-        'age_min': null_norm(parseInt($wrapper.find('#age_min').val())),
-        'age_max': null_norm(parseInt($wrapper.find('#age_max').val())),
-        'height_min': null_norm(parseInt($wrapper.find('#height_min').val())),
-        'height_max': null_norm(parseInt($wrapper.find('#height_max').val())),
-        'handedness': null_norm(parseInt($wrapper.find('#handedness').val())),
-        'social_has': $wrapper.find('#social_has').prop('checked'),
-        'home_city': null_norm($wrapper.find('#home_city').val()),
-        'active_in': active_in
-      };
+      let data = { ...author_search_schema };
+      data.companions = authors;
+      data.age_min = null_norm(parseInt($wrapper.find('#age_min').val()));
+      data.age_max = null_norm(parseInt($wrapper.find('#age_max').val()));
+      data.height_min = null_norm(parseInt($wrapper.find('#height_min').val()));
+      data.height_max = null_norm(parseInt($wrapper.find('#height_max').val()));
+      data.handedness = null_norm(parseInt($wrapper.find('#handedness').val()));
+      data.social_has = $wrapper.find('#social_has').prop('checked');
+      data.home_city = null_norm($wrapper.find('#home_city').val());
+      data.active_in = active_in;
+
       data = base64.bytesToBase64(
         gzip.zip(
           JSON.stringify(data), 
@@ -583,8 +608,9 @@ $(function(){
     });
   }
   
-  $('a[href="#"]').on('click', function(e){
-    e.preventDefault();
+  $('a').on('click', function(e){
+    if(this.href === '#')
+      e.preventDefault();
   });
 
   /* any page
@@ -1098,6 +1124,22 @@ $(function(){
         });
       });
     });
+  }
+
+  /* /tags
+   * ##########################################*/
+  if (__path_t === '/tags') {
+    let $wrapper = $('.page-tags');
+    $wrapper.find('.node119 .tags > *').on('click', function (e) {
+      let query = { ...graffiti_search_schema }
+      query.tags = [$(this).html()];
+      query = JSON.stringify(query);
+      query = base64.bytesToBase64(gzip.zip(query, {level: 9}))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+
+      $(this).attr('href', __root_url + 'views/graffitis/search/' + query)
+    })
   }
 
 })

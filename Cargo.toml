@@ -1,6 +1,6 @@
 [package]
 name = "lambda"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["FredericaBernkastel <bernkastel.frederica@protonmail.com>"]
 edition = "2018"
 
