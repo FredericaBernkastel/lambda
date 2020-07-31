@@ -555,6 +555,7 @@ impl View {
     aggregate_counties: Vec<(/* country */ String, /* count */ u32)>,
     aggregate_cities: Vec<(/* city */ String, /* count */ u32)>,
     aggregate_gps: Vec<model::home_Graffiti>,
+    aggregate_companions: Vec<(/* id */ u32, /* name */ String)>,
   ) -> Result<Markup> {
     Ok(html! {
       (self.mar_header()?)
@@ -640,11 +641,9 @@ impl View {
               .node115_1.boxed {
                 p.box-title { "Previous companions" }
                 .items {
-                  .item { a href="#" { "Author Name 1" } }
-                  .item { a href="#" { "Author Name 2" } }
-                  .item { a href="#" { "Author Name 3" } }
-                  .item { a href="#" { "Author Name 4" } }
-                  .item { a href="#" { "Author Name 5" } }
+                  @for (id, name) in aggregate_companions {
+                    .item { a href={ (self.root_url) "views/author/" (id) } { (name) } }
+                  }
                 }
               }
               .node115_2.boxed {

@@ -961,6 +961,7 @@ impl Model {
       aggregate_counties,
       aggregate_cities,
       aggregate_gps,
+      aggregate_companions,
     ) = web::block(self.db_pool.clone(), move |db| -> Result<_> {
       Ok((
         // author
@@ -1085,6 +1086,29 @@ impl Model {
         })?
         .filter_map(std::result::Result::ok)
         .collect(): Vec<home_Graffiti>,
+        // aggregate_companions
+        db.prepare(
+          "with sub1 as (
+            select graffiti_id
+              from graffiti_author
+             where author_id = :author_id
+          ),
+          sub2 as (
+            select author_id
+              from graffiti_author
+             where graffiti_id in sub1 and 
+                   author_id <> :author_id
+             group by author_id
+          )
+          select author.id,
+                 author.name
+            from sub2
+                 inner join author on author.id = sub2.author_id
+           order by author.name asc",
+        )?
+        .query_map(params![id], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .filter_map(std::result::Result::ok)
+        .collect(): Vec<(u32, String)>,
       ))
     })
     .await?;
@@ -1114,6 +1138,7 @@ impl Model {
       aggregate_counties,
       aggregate_cities,
       aggregate_gps,
+      aggregate_companions,
     )
   }
 
