@@ -55,6 +55,7 @@ pub async fn main(
         "/author/store_image",
         "/search/author_names",
         "/search/tag_names",
+        "/search/locations",
       ] {
         tmp.insert(path, path);
       }
@@ -95,6 +96,7 @@ pub async fn main(
             "/author/store_image" => ctr.store_image(vec![(170, 226), (56, 75)]).await?,
             "/search/author_names" => ctr.search_author_names().await?,
             "/search/tag_names" => ctr.search_tag_names().await?,
+            "/search/locations" => ctr.search_locations().await?,
             _ => unreachable!(),
           }
         }
@@ -916,6 +918,44 @@ impl Controller {
       })
       .collect();
 
+    Ok(json!({ "result": names }))
+  }
+
+  ///search/locations
+  async fn search_locations(mut self) -> Result<JsonValue> {
+    #[derive(Deserialize)]
+    struct Request {
+      term: String,
+    };
+    let request: Request = from_json(self.post_data.take())?;
+    let names = web::block(self.db_pool, move |db| -> Result<_> {
+      let mut stmt = db.prepare(
+        "select country,
+               city,
+               street
+          from location
+         where country like :term or 
+               city like :term or 
+               street like :term
+          limit 10",
+      )?;
+
+      let term = format!("%{}%", request.term);
+      let mut names: Vec<String> = stmt
+        .query_map(params![term], |row| {
+          Ok(vec![row.get(0)?, row.get(1)?, row.get(2)?])
+        })?
+        .filter_map(std::result::Result::ok)
+        .flatten()
+        .filter(|x: &String| x.to_lowercase().contains(&request.term.to_lowercase()))
+        .collect();
+      names.sort_unstable();
+      names.dedup();
+      Ok(names)
+    })
+    .await?;
+
+    let names: Vec<JsonValue> = names.into_iter().map(|x| json!({ "name": x })).collect();
     Ok(json!({ "result": names }))
   }
 

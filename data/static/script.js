@@ -902,7 +902,7 @@ $(function(){
     });
 
     // authors input controller
-    author_input($wrapper.find('.search .node108 .row input[type="text"]'));
+    author_input($wrapper.find('.node108 .row input[type="text"]'));
 
     // graffiti tags input controller
     graffiti_tags_input($wrapper.find('.node112 .tags-input'));
@@ -993,16 +993,31 @@ $(function(){
             // authors input controller
             author_input($wrapper.find('.search .node108 .row input[type="text"]'));
 
-            $wrapper.find(
-                '.search .node108 .row input[type="text"], \
-                 .search .node124_2 .tags-input').attr('disabled', '');
-
             // active_in locations input controller
             $wrapper.find('.search .node124_2 .tags-input').select2({
-              tags: true
+              tags: true,
+              ajax: {
+                type: 'POST',
+                url: __rpc + 'search/locations',
+                data: function (params) {
+                  return JSON.stringify({
+                    'cors_h': __cors_h,
+                    'term': params.term
+                  });
+                },
+                processResults: function (data) {
+                  return {
+                    results: JSON.parse(data).result.map(function(x, i){
+                      return {
+                        'id': x.name,
+                        'text': x.name
+                      }
+                    })
+                  };
+                }
+              },
+              minimumInputLength: 2
             });
-
-
 
             init = true;
           }

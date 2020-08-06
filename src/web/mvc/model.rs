@@ -798,15 +798,82 @@ impl Model {
               Box::new(format!("%{}%", home_city)),
             )]);
         }
-        dyn_stmt
-          .push(
-            " order by a.id desc
-            limit :page * :limit, :limit",
+
+        // companion with
+        if request.companions.len() != 0 {
+          let mut companions_pmt = "".to_string();
+          for (i, companion) in request.companions.iter().enumerate() {
+            if i != 0 {
+              companions_pmt += ",";
+            }
+            companions_pmt += &format!("(:companion{})", i);
+            dyn_stmt.bind(vec![(format!(":companion{}", i), Box::new(companion.id))]);
+          }
+
+          let companion_1_exclude = if request.companions.len() == 1 {
+            format!("and author_id not in ({})", companions_pmt)
+          } else {
+            "".to_string()
+          };
+
+          dyn_stmt.sql = format!(
+            "with a as ({sub0}),
+            sub2 as (
+              with sub2_sub1 as (
+                select graffiti_id
+                  from graffiti_author
+                 where author_id in ({companions_pmt})
+              )
+              select distinct author_id
+                from graffiti_author
+               where graffiti_id in sub2_sub1 {companion_1_exclude}
+            )
+            select *
+              from a
+             where a.id in sub2",
+            sub0 = dyn_stmt.sql,
+            companions_pmt = companions_pmt,
+            companion_1_exclude = companion_1_exclude
+          );
+        }
+
+        // active in
+        if request.active_in.len() != 0 {
+          let mut terms = "".to_string();
+          for (i, term) in request.active_in.into_iter().enumerate() {
+            if i != 0 {
+              terms += ",";
+            }
+            terms += &format!(":active_in{}", i);
+            dyn_stmt.bind(vec![(format!(":active_in{}", i), Box::new(term))]);
+          }
+          dyn_stmt.sql = format!(
+            "with a as ({sub0}),
+            sub2 as (
+              with sub2_sub1 as (
+                select graffiti_id
+                  from location
+                 where country in ({terms}) or 
+                       city in ({terms}) or 
+                       street in ({terms}) 
+                )
+                select distinct graffiti_author.author_id
+                  from sub2_sub1
+                       inner join graffiti on graffiti.id = sub2_sub1.graffiti_id
+                       inner join graffiti_author on graffiti_author.graffiti_id = graffiti.id
+            )
+            select *
+              from a
+             where a.id in sub2",
+            sub0 = dyn_stmt.sql,
+            terms = terms
           )
-          .bind(vec![
-            (":page".into(), Box::new(page - 1)),
-            (":limit".into(), Box::new(rows_per_page)),
-          ]);
+        }
+
+        dyn_stmt.push(" limit :page * :limit, :limit").bind(vec![
+          (":page".into(), Box::new(page - 1)),
+          (":limit".into(), Box::new(rows_per_page)),
+        ]);
 
         let mut dyn_stmt_count = util::DynQuery::new();
         dyn_stmt_count.push(&format!("select count( * ) from ({})", &dyn_stmt.sql));
