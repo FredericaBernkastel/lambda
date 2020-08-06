@@ -807,7 +807,7 @@ $(function(){
         let time = $wrapper.find('#time').val();
         if (!date) return null;
 
-        datetime = date + 'T' + (time ? time : '00:00:00') + 'Z';
+        let datetime = date + 'T' + (time ? time : '00:00:00') + 'Z';
         datetime = Date.parse(datetime) / 1000; // timestamp in seconds;
         if (!datetime) return null;
         return datetime;

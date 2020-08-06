@@ -802,16 +802,24 @@ impl Model {
         // companion with
         if request.companions.len() != 0 {
           let mut companions_pmt = "".to_string();
+          let mut companions = "".to_string();
           for (i, companion) in request.companions.iter().enumerate() {
             if i != 0 {
-              companions_pmt += ",";
+              companions_pmt += " intersect ";
+              companions += ",";
             }
-            companions_pmt += &format!("(:companion{})", i);
+            companions_pmt += &format!(
+              "select graffiti_id
+              from graffiti_author
+             where author_id = :companion{}",
+              i
+            );
+            companions += &format!("(:companion{})", i);
             dyn_stmt.bind(vec![(format!(":companion{}", i), Box::new(companion.id))]);
           }
 
           let companion_1_exclude = if request.companions.len() == 1 {
-            format!("and author_id not in ({})", companions_pmt)
+            format!("and author_id not in ({})", companions)
           } else {
             "".to_string()
           };
@@ -819,12 +827,8 @@ impl Model {
           dyn_stmt.sql = format!(
             "with a as ({sub0}),
             sub2 as (
-              with sub2_sub1 as (
-                select graffiti_id
-                  from graffiti_author
-                 where author_id in ({companions_pmt})
-              )
-              select distinct author_id
+              with sub2_sub1 as ({companions_pmt})
+              select author_id
                 from graffiti_author
                where graffiti_id in sub2_sub1 {companion_1_exclude}
             )
