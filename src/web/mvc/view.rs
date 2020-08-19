@@ -73,6 +73,7 @@ impl View {
     graffitis: Vec<model::graffitis_Graffiti>,
     mar_navigation: Markup,
     search_opts: Option<model::graffitis_SearchOpts>,
+    aggregate_gps: Vec<model::home_Graffiti>,
   ) -> Result<Markup> {
     Ok(html! {
       (self.mar_header()?)
@@ -87,7 +88,7 @@ impl View {
               }
             }
           }
-          (self.mar_graffiti_search(search_opts))
+          (self.mar_graffiti_search(search_opts, aggregate_gps))
           (mar_navigation)
           .table {
             .row.head {
@@ -969,7 +970,11 @@ impl View {
     }
   }
 
-  fn mar_graffiti_search(&self, request: Option<model::graffitis_SearchOpts>) -> Markup {
+  fn mar_graffiti_search(
+    &self,
+    request: Option<model::graffitis_SearchOpts>,
+    aggregate_gps: Vec<model::home_Graffiti>,
+  ) -> Markup {
     let classname = if request.is_none() { "" } else { "init" };
     let request = request.unwrap_or_default();
     html! {
@@ -1044,6 +1049,11 @@ impl View {
                 "Search"
                 (self.svg_sprite("search", "", ""))
               }
+            }
+          }
+          @if aggregate_gps.len() != 0 {
+            .row2 {
+              .map data=(json!(aggregate_gps).to_string()) { }
             }
           }
         }

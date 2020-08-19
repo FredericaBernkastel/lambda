@@ -767,6 +767,9 @@ $(function(){
             // graffiti tags input controller
             graffiti_tags_input($wrapper.find('.node121_1 .tags-input'));
 
+            if (__path_t.indexOf('/graffitis/search') === 0)
+              $wrapper.find('.navigation').get(0).scrollIntoView();
+
             init = true;
           }
           icon.html(icon.attr('data-up'));
@@ -779,6 +782,12 @@ $(function(){
 
       // graffiti search controller
       graffiti_search($wrapper.find('.search'));
+
+      { // map
+        let $map = $wrapper.find('.search .row2 > .map');
+        if ($map.length)
+          map_presentation($map, JSON.parse($map.attr('data')));
+      }
     }
   }
 
@@ -1018,6 +1027,9 @@ $(function(){
               },
               minimumInputLength: 2
             });
+
+            if (__path_t.indexOf('/authors/search') === 0)
+              $wrapper.find('.navigation').get(0).scrollIntoView();
 
             init = true;
           }

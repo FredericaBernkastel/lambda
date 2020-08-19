@@ -260,7 +260,7 @@ impl Model {
       total as i64,
     )?;
 
-    self.v_graffitis(graffitis, mar_navigation, None)
+    self.v_graffitis(graffitis, mar_navigation, None, vec![])
   }
 
   async fn m_graffitis_search(&self) -> Result<Markup> {
@@ -271,7 +271,7 @@ impl Model {
 
     let request = util::b64_gunzip_deserialize_t::<graffitis_SearchOpts>(data)?;
 
-    let (graffitis, total) = web::block(self.db_pool.clone(), {
+    let (graffitis, aggregate_gps, total) = web::block(self.db_pool.clone(), {
       let rows_per_page = self.config.web.rows_per_page;
       let request = request.clone();
       move |db| -> Result<_> {
@@ -281,7 +281,9 @@ impl Model {
                  e.datetime as `1`,
                  e.views as `2`,
                  a.city as `3`,
-                 b.hash as `4`
+                 b.hash as `4`,
+                 a.gps_lat as `5`,
+                 a.gps_long as `6`
             from graffiti e
                  left join location a on a.graffiti_id = e.id
                  left join graffiti_image b on b.graffiti_id = e.id and 
@@ -370,9 +372,6 @@ impl Model {
             (":limit".into(), Box::new(rows_per_page)),
           ]);
 
-        let mut dyn_stmt_count = util::DynQuery::new();
-        dyn_stmt_count.push(&format!("select count( * ) from ({})", &dyn_stmt.sql));
-
         let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![];
         let mut params_count: Vec<(&str, &dyn rusqlite::ToSql)> = vec![];
         for (k, v) in &dyn_stmt.params {
@@ -384,24 +383,38 @@ impl Model {
           };
         }
 
-        Ok((
-          //graffitiis
-          db.prepare(&dyn_stmt.sql)?
-            .query_map_named(params.as_slice(), |row| {
-              Ok(Graffiti {
-                id: row.get(0)?,
-                datetime: row.get(1)?,
-                views: row.get(2)?,
-                city: row.get(3)?,
-                thumbnail: row.get(4)?,
-              })
-            })?
-            .filter_map(std::result::Result::ok)
-            .collect(),
-          // total
-          db.prepare(&dyn_stmt_count.sql)?
-            .query_row_named(params_count.as_slice(), |row| row.get::<_, i64>(0))?,
-        ))
+        //graffitiis
+        let graffitis = db
+          .prepare(&dyn_stmt.sql)?
+          .query_map_named(params.as_slice(), |row| {
+            Ok(Graffiti {
+              id: row.get(0)?,
+              datetime: row.get(1)?,
+              views: row.get(2)?,
+              city: row.get(3)?,
+              thumbnail: row.get(4)?,
+            })
+          })?
+          .filter_map(std::result::Result::ok)
+          .collect();
+
+        let mut total = 0;
+
+        // total & gps
+        let aggregate_gps = db
+          .prepare(&dyn_stmt.sql)?
+          .query_map_named(params_count.as_slice(), |row| {
+            total += 1;
+            Ok(home_Graffiti {
+              id: row.get(0)?,
+              thumbnail: row.get(4)?,
+              coords: Some([row.get::<_, f64>(5)?, row.get::<_, f64>(6)?]),
+            })
+          })?
+          .filter_map(std::result::Result::ok)
+          .collect();
+
+        Ok((graffitis, aggregate_gps, total))
       }
     })
     .await?;
@@ -413,7 +426,7 @@ impl Model {
       total as i64,
     )?;
 
-    self.v_graffitis(graffitis, mar_navigation, Some(request))
+    self.v_graffitis(graffitis, mar_navigation, Some(request), aggregate_gps)
   }
 
   async fn m_graffiti_edit(&self) -> Result<Markup> {
