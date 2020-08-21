@@ -309,7 +309,7 @@ impl View {
     location: schema::Location,
     images: Vec<String>,
     authors: Vec<model::graffiti_Author>,
-    tags: Vec<String>,
+    tags: Vec<(u32, String)>,
   ) -> Result<Markup> {
     let (gps_json, gps_label) =
       if let (Some(lat), Some(long)) = (location.gps_lat, location.gps_long) {
@@ -368,8 +368,8 @@ impl View {
                 }
               }
               .tags {
-                @for tag in tags {
-                  a href="#" { (tag) }
+                @for (id, tag) in tags {
+                  a href="#" data-id=(id) { (tag) }
                 }
               }
             }
@@ -687,7 +687,7 @@ impl View {
     })
   }
 
-  pub fn v_tags(&self, tags: Vec<String>) -> Result<Markup> {
+  pub fn v_tags(&self, tags: Vec<(u32, String)>) -> Result<Markup> {
     Ok(html! {
       (self.mar_header()?)
 
@@ -714,8 +714,8 @@ impl View {
           .node119 {
             p { b { "List of graffiti tags" } }
             .tags {
-              @for tag in tags {
-                a href="#" { (tag) }
+              @for (id, tag) in tags {
+                a href="#" data-id=(id) { (tag) }
               }
             }
           }
@@ -1031,8 +1031,8 @@ impl View {
                 p.box-title { "Tags" }
                 .tags_wrp {
                   select.tags-input multiple="" autocomplete="off"  {
-                    @for tag in request.tags {
-                      option selected="" { (tag) }
+                    @for (id, text) in request.tags {
+                      option selected="" value=(id) { (text) }
                     }
                   }
                 }

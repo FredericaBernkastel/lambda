@@ -891,34 +891,41 @@ impl Controller {
     };
     let request: Request = from_json(self.post_data.take())?;
     struct Row {
+      id: u32,
       name: String,
     };
-    let names = web::block(self.db_pool, move |db| -> Result<_> {
+    let tags = web::block(self.db_pool, move |db| -> Result<_> {
       let mut stmt = db.prepare(
-        "select name
+        "select id, name
            from tag
           where name like :term
           limit 10",
       )?;
       let term = format!("%{}%", request.term);
       let tags: Vec<Row> = stmt
-        .query_map(params![term], |row| Ok(Row { name: row.get(0)? }))?
+        .query_map(params![term], |row| {
+          Ok(Row {
+            id: row.get(0)?,
+            name: row.get(1)?,
+          })
+        })?
         .filter_map(std::result::Result::ok)
         .collect();
       Ok(tags)
     })
     .await?;
 
-    let names: Vec<JsonValue> = names
+    let tags: Vec<JsonValue> = tags
       .into_iter()
       .map(|x| {
         json!({
+          "id": x.id,
           "name": x.name
         })
       })
       .collect();
 
-    Ok(json!({ "result": names }))
+    Ok(json!({ "result": tags }))
   }
 
   ///search/locations

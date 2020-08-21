@@ -276,22 +276,42 @@ impl Model {
       let request = request.clone();
       move |db| -> Result<_> {
         let mut dyn_stmt = util::DynQuery::new();
-        dyn_stmt.push(
+        dyn_stmt.push(&format!(
           "select e.id as `0`,
-                 e.datetime as `1`,
-                 e.views as `2`,
-                 a.city as `3`,
-                 b.hash as `4`,
-                 a.gps_lat as `5`,
-                 a.gps_long as `6`
-            from graffiti e
-                 left join location a on a.graffiti_id = e.id
-                 left join graffiti_image b on b.graffiti_id = e.id and 
-                                               b.`order` = 0
-                 left join graffiti_author c on c.graffiti_id = e.id
-                 left join graffiti_tag d on d.graffiti_id = e.id
-           where true",
-        );
+                   e.datetime as `1`,
+                   e.views as `2`,
+                   a.city as `3`,
+                   b.hash as `4`,
+                   a.gps_lat as `5`,
+                   a.gps_long as `6`
+              from graffiti e
+                   left join location a on a.graffiti_id = e.id
+                   left join graffiti_image b on b.graffiti_id = e.id and 
+                                                 b.`order` = 0
+                   left join graffiti_author c on c.graffiti_id = e.id
+                   {tags}
+             where true",
+          tags = request
+            .tags
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
+              format!(
+                "inner join graffiti_tag tag_j{i} on
+                  tag_j{i}.graffiti_id = e.id and tag_j{i}.tag_id = :tag{i}",
+                i = i
+              )
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
+        ));
+        request
+          .tags
+          .into_iter()
+          .enumerate()
+          .for_each(|(i, (tag, _))| {
+            dyn_stmt.bind(vec![(format!(":tag{}", i), Box::new(tag))]);
+          });
 
         if let Some(country) = request.country {
           dyn_stmt
@@ -346,20 +366,6 @@ impl Model {
             dyn_stmt.push(&format!(" {} c.author_id in (:author{})", op, i))
           }
           .bind(vec![(format!(":author{}", i), Box::new(author.id))]);
-        }
-        if request.tags.len() > 0 {
-          dyn_stmt.push(
-            " and d.tag_id in (
-               select id
-                 from tag
-                where name in (",
-          );
-          for (i, tag) in request.tags.iter().enumerate() {
-            dyn_stmt
-              .push(&format!("{}:tag{}", if i > 0 { "," } else { "" }, i))
-              .bind(vec![(format!(":tag{}", i), Box::new(tag.to_owned()))]);
-          }
-          dyn_stmt.push("))");
         }
         dyn_stmt
           .push(
@@ -656,14 +662,14 @@ impl Model {
           .collect(): Vec<Author>,
           // tags
           db.prepare(
-            "select b.name
+            "select b.id, b.name
               from graffiti_tag a
                    inner join tag b on b.id = a.tag_id
              where a.graffiti_id = :graffiti_id",
           )?
-          .query_map(params![id], |row| Ok(row.get(0)?))?
+          .query_map(params![id], |row| Ok((row.get(0)?, row.get(1)?)))?
           .filter_map(std::result::Result::ok)
-          .collect(): Vec<String>,
+          .collect(): Vec<(u32, String)>,
         ))
       })
       .await?;
@@ -1230,13 +1236,13 @@ impl Model {
     let tags = web::block(self.db_pool.clone(), move |db| -> Result<_> {
       Ok(
         db.prepare(
-          "select name
+          "select id, name
           from tag
          order by name asc",
         )?
-        .query_map(params![], |row| Ok(row.get(0)?))?
+        .query_map(params![], |row| Ok((row.get(0)?, row.get(1)?)))?
         .filter_map(std::result::Result::ok)
-        .collect(): Vec<String>,
+        .collect(): Vec<(u32, String)>,
       )
     })
     .await?;
@@ -1321,7 +1327,7 @@ pub struct graffitis_SearchOpts {
   pub date_after: Option<String>,
   pub authors_number: Option<u32>,
   pub authors: Vec<graffiti_Author>,
-  pub tags: Vec<String>,
+  pub tags: Vec<(u32, String)>,
 }
 
 #[derive(Default, Debug, Clone, serde::Deserialize)]

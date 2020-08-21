@@ -510,7 +510,7 @@ $(function(){
           return {
             results: JSON.parse(data).result.map(function(x, i){
               return {
-                'id': x.name,
+                'id': x.id,
                 'text': x.name
               }
             })
@@ -541,7 +541,7 @@ $(function(){
         .find('.node121_1 .tags-input')
         .select2('data')
         .map(function(x) {
-          return x.text;
+          return [+x.id, x.text];
         });
 
       let data = { ...graffiti_search_schema };
@@ -957,7 +957,7 @@ $(function(){
 
     $wrapper.find('.node102 .tags > *').on('click', function (e) {
       let query = { ...graffiti_search_schema }
-      query.tags = [$(this).html()];
+      query.tags = [[+$(this).attr('data-id'), $(this).html()]];
       query = JSON.stringify(query);
       query = base64.bytesToBase64(gzip.zip(StringToUTF8Array(query), {level: 9}))
           .replace(/\+/g, '-')
@@ -1173,7 +1173,7 @@ $(function(){
     let $wrapper = $('.page-tags');
     $wrapper.find('.node119 .tags > *').on('click', function (e) {
       let query = { ...graffiti_search_schema }
-      query.tags = [$(this).html()];
+      query.tags = [[+$(this).attr('data-id'), $(this).html()]];
       query = JSON.stringify(query);
       query = base64.bytesToBase64(gzip.zip(StringToUTF8Array(query), {level: 9}))
         .replace(/\+/g, '-')
