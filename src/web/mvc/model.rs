@@ -1236,13 +1236,13 @@ impl Model {
     let tags = web::block(self.db_pool.clone(), move |db| -> Result<_> {
       Ok(
         db.prepare(
-          "select id, name
+          "select id, name, count
           from tag
          order by name asc",
         )?
-        .query_map(params![], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .query_map(params![], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
         .filter_map(std::result::Result::ok)
-        .collect(): Vec<(u32, String)>,
+        .collect(): Vec<(u32, String, u32)>,
       )
     })
     .await?;

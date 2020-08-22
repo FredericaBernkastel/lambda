@@ -56,6 +56,7 @@ pub async fn main(
         "/search/author_names",
         "/search/tag_names",
         "/search/locations",
+        "/tags/edit",
       ] {
         tmp.insert(path, path);
       }
@@ -97,6 +98,7 @@ pub async fn main(
             "/search/author_names" => ctr.search_author_names().await?,
             "/search/tag_names" => ctr.search_tag_names().await?,
             "/search/locations" => ctr.search_locations().await?,
+            "/tags/edit" => ctr.tags_edit().await?,
             _ => unreachable!(),
           }
         }
@@ -964,6 +966,105 @@ impl Controller {
 
     let names: Vec<JsonValue> = names.into_iter().map(|x| json!({ "name": x })).collect();
     Ok(json!({ "result": names }))
+  }
+
+  ///tags_edit
+  async fn tags_edit(mut self) -> Result<JsonValue> {
+    #[repr(u8)]
+    #[derive(serde_repr::Deserialize_repr)]
+    enum TagOpcode {
+      Delete = 1,
+      Rename = 2,
+      Merge = 3,
+    };
+    #[derive(Deserialize)]
+    struct Request {
+      opcode: TagOpcode,
+      lhside: String,
+      rhside: String,
+    };
+    let request: Request = from_json(self.post_data.take())?;
+    web::block(self.db_pool, move |mut _db| -> Result<_> {
+      let transaction = _db.transaction()?;
+
+      match request.opcode {
+        TagOpcode::Delete => {
+          transaction
+            .prepare(
+              "delete from graffiti_tag
+              where tag_id = (
+                               select id
+                                 from tag
+                                where name = :tag
+                             )",
+            )?
+            .execute(params![request.lhside])?;
+          transaction
+            .prepare("delete from tag where name = :tag")?
+            .execute(params![request.lhside])?;
+        }
+        TagOpcode::Rename => {
+          transaction
+            .prepare(
+              "update tag
+             set name = :rhside
+           where name = :lhside",
+            )?
+            .execute_named(named_params![
+              ":lhside": request.lhside,
+              ":rhside": request.rhside
+            ])?;
+        }
+        TagOpcode::Merge => {
+          transaction
+            .prepare(
+              // the (graffiti_id, tag_id) unique contraint will ensure that the set is distinct
+              "update graffiti_tag
+               set tag_id = (
+                     select id
+                       from tag
+                      where name = :rhside
+                   )
+             where tag_id = (
+                     select id
+                       from tag
+                      where name = :lhside
+                   )",
+            )?
+            .execute_named(named_params![
+              ":lhside": request.lhside,
+              ":rhside": request.rhside,
+            ])?;
+          transaction
+            .prepare("delete from tag where name = :lhside")?
+            .execute(params![request.lhside])?;
+          transaction
+            .prepare(
+              "update tag
+               set count = (
+                 select count( * ) 
+                   from graffiti_tag
+                  where tag_id = (
+                     select id
+                       from tag
+                      where name = :rhside
+                   )
+               )
+             where id = (
+                select id
+                  from tag
+                 where name = :rhside
+              )",
+            )?
+            .execute_named(named_params![":rhside": request.rhside])?;
+        }
+      }
+
+      transaction.commit()?;
+      Ok(())
+    })
+    .await?;
+    Ok(json!({ "result": Opcode::Success as u8 }))
   }
 
   fn images_ctr(

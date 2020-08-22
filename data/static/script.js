@@ -76,6 +76,8 @@ $(function(){
   function display_warning(message, callback){
     let popup = $('.popup-wrapper#warning');
     popup.find('.message').html(message);
+
+    // buttons
     popup.find('.action-btn#cancel')
       .off('click')
       .on('click', function(){
@@ -129,7 +131,7 @@ $(function(){
       });
     }
 
-    $wrapper.children('.image:not(.processing):not(.add)').each(function(i){
+    $wrapper.children('.image:not(.processing):not(.add)').each(function(){
       image_controls($(this));
     });
 
@@ -233,7 +235,7 @@ $(function(){
               }
             },
             error: function(jqXHR, status, error){
-              display_error('error: network failure');
+              display_error(escapeHtml(jqXHR.responseText));
             }
           });
         }
@@ -641,6 +643,7 @@ $(function(){
             window.location.reload(false);
         },
         error: function(jqXHR, status, error){
+          display_error(escapeHtml(jqXHR.responseText));
           send_mutex = false;
         }
       });
@@ -905,6 +908,7 @@ $(function(){
           }
         },
         error: function(jqXHR, status, error){
+          display_error(escapeHtml(jqXHR.responseText));
           send_mutex = false;
         }
       });
@@ -949,13 +953,14 @@ $(function(){
               window.location = __root_url + 'views/graffitis';
           },
           error: function(jqXHR, status, error){
+            display_error(escapeHtml(jqXHR.responseText));
             send_mutex = false;
           }
         });
       });
     });
 
-    $wrapper.find('.node102 .tags > *').on('click', function (e) {
+    $wrapper.find('.node102 .tags > *').on('click', function () {
       let query = { ...graffiti_search_schema }
       query.tags = [[+$(this).attr('data-id'), $(this).html()]];
       query = JSON.stringify(query);
@@ -1016,7 +1021,7 @@ $(function(){
                 },
                 processResults: function (data) {
                   return {
-                    results: JSON.parse(data).result.map(function(x, i){
+                    results: JSON.parse(data).result.map(function(x){
                       return {
                         'id': x.name,
                         'text': x.name
@@ -1122,6 +1127,7 @@ $(function(){
           }
         },
         error: function(jqXHR, status, error){
+          display_error(escapeHtml(jqXHR.responseText));
           send_mutex = false;
         }
       });
@@ -1160,6 +1166,7 @@ $(function(){
               window.location = __root_url + 'views/authors';
           },
           error: function(jqXHR, status, error){
+            display_error(escapeHtml(jqXHR.responseText));
             send_mutex = false;
           }
         });
@@ -1171,16 +1178,145 @@ $(function(){
    * ##########################################*/
   if (__path_t === '/tags') {
     let $wrapper = $('.page-tags');
-    $wrapper.find('.node119 .tags > *').on('click', function (e) {
+
+    let tags_map = {};
+    $wrapper.find('.node119 .tags > *').each(function () {
+      tags_map[$(this).attr('data-tag')] = $(this)
+    });
+
+    $wrapper.find('.node119 .tags > *').on('click', function () {
       let query = { ...graffiti_search_schema }
-      query.tags = [[+$(this).attr('data-id'), $(this).html()]];
+      query.tags = [[+$(this).attr('data-id'), $(this).attr('data-tag')]];
       query = JSON.stringify(query);
       query = base64.bytesToBase64(gzip.zip(StringToUTF8Array(query), {level: 9}))
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
 
       $(this).attr('href', __root_url + 'views/graffitis/search/' + query)
-    })
+    });
+
+    // tag editing
+    {
+      let tag_exists = (tag) => !!tags_map[tag];
+      let send_mutex = false;
+
+      const opcode = {
+        err: 0,
+        delete: 1,
+        rename: 2,
+        merge: 3
+      };
+
+      let fn_opcode = (lhside, rhside) => {
+        let op = opcode.err;
+
+        if (
+            lhside === '' && rhside === '' ||
+            lhside === rhside ||
+            lhside === '' ||
+            !tag_exists(lhside)
+        )
+          { /* a little speedup */ }
+        else if (tag_exists(lhside) && rhside === '')
+          op = opcode.delete;
+        else if (tag_exists(lhside) && !tag_exists(rhside))
+          op = opcode.rename;
+        else if (tag_exists(lhside) && tag_exists(rhside))
+          op = opcode.merge;
+
+        return op
+      }
+
+      // operation presentation
+      $wrapper.find('.node118 input').on('change paste keyup', () => {
+        let lhside = $wrapper.find('.node118 input:eq(0)').val();
+        let rhside = $wrapper.find('.node118 input:eq(1)').val();
+        let $buttons = $wrapper.find('.node118 .action-btn');
+        let op = fn_opcode(lhside, rhside);
+        switch (op) {
+          case opcode.err: $buttons.hide(); break;
+          case opcode.delete: $buttons.filter('#delete').show().siblings('.action-btn').hide(); break;
+          case opcode.rename: $buttons.filter('#rename').show().siblings('.action-btn').hide(); break;
+          case opcode.merge: $buttons.filter('#merge').show().siblings('.action-btn').hide(); break;
+        }
+      });
+      // enter hotkey
+      $wrapper.find('.node118 input').on('keydown', null, "return", function(e) {
+        e.preventDefault();
+        $wrapper.find('.node118 .action-btn:eq(0)').trigger('click');
+      });
+
+      $wrapper.find('.node118 input:eq(0)').trigger('change');
+
+      $wrapper.find('.node118 .action-btn').on('click', function () {
+        if (send_mutex)
+          return;
+        send_mutex = true;
+
+        let lhside = $wrapper.find('.node118 input:eq(0)').val();
+        let rhside = $wrapper.find('.node118 input:eq(1)').val();
+        let op = fn_opcode(lhside, rhside);
+
+        let callback = () => $.ajax({
+          type: 'POST',
+          url: __rpc + 'tags/edit',
+          data: JSON.stringify({
+            cors_h: __cors_h,
+            opcode: op,
+            lhside: lhside,
+            rhside: rhside
+          }),
+          success: (response) => {
+            response = JSON.parse(response);
+            if (response.result === rpc.Success) {
+              switch (op) {
+                case opcode.delete:
+                  tags_map[lhside].remove();
+                  delete tags_map[lhside];
+                  break;
+                case opcode.rename:
+                  tags_map[lhside]
+                      .attr('data-tag', rhside)
+                      .children('b')
+                      .html(escapeHtml(rhside));
+                  delete Object.assign(tags_map, {[rhside]: tags_map[lhside] })[lhside];
+                  break;
+                case opcode.merge:
+                  let count = +tags_map[rhside].attr('data-count');
+                  count += +tags_map[lhside].attr('data-count');
+                  tags_map[rhside]
+                      .attr('data-count', count)
+                      .html(`<b>${escapeHtml(rhside)}</b> | ${count}?`);
+                  tags_map[lhside].remove();
+                  delete tags_map[lhside];
+              }
+              $wrapper.find('.node118 input:eq(0)').trigger('change');
+              send_mutex = false;
+            }
+          },
+          error: (jqXHR, status, error) => {
+            display_error(escapeHtml(jqXHR.responseText));
+            send_mutex = false;
+          }
+        });
+
+        switch (op) {
+          case opcode.delete: display_warning(
+              `Delete tag "<b>${escapeHtml(lhside)}</b>"?`,
+              callback
+          ); break;
+          case opcode.rename: display_warning(
+              `Raname tag "<b>${escapeHtml(lhside)}</b>" to "<b>${escapeHtml(rhside)}</b>"?`,
+              callback
+          ); break;
+          case opcode.merge: display_warning(
+              `Merge tags "<b>${escapeHtml(lhside)}</b>" to "<b>${escapeHtml(rhside)}</b>"?`,
+              callback
+          ); break;
+        }
+      })
+    }
+
   }
 
 })

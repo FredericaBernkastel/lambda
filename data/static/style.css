@@ -124,6 +124,7 @@ select { padding: 1px 0; }
         .popup-wrapper > .popup .inner .message .select2-container { margin-top: 16px; }
       .popup-wrapper > .popup .inner .actions-wrapper { justify-content: flex-end; margin-bottom: 0; }
     .popup-wrapper#error > .popup .title { color: #fff; background-color: #fa3030; }
+      .popup-wrapper#error > .popup .inner .message { max-height: 400px; overflow: scroll; white-space: pre; font: 100 11px/1 monospace; }
     .popup-wrapper#warning > .popup .title { color: #fff; background-color: #ffac00; font-size: 19px; padding: 6px 15px; display: flex; align-items: center; }
       .popup-wrapper#warning > .popup .title svg { width: 20px; height: 20px; }
 
@@ -361,13 +362,16 @@ select { padding: 1px 0; }
 
 .page-tags {  }
   .page-tags .node118 { margin-bottom: 15px; }
-    .page-tags .node118 > * { display: flex; margin-bottom: 15px; }
-      .page-tags .node118 > * input { flex-basis: 150px; }
-      .page-tags .node118 > * .action-btn { min-width: 98px; margin-right: 8px; }
-      .page-tags .node118 > .edit .arrow { display: flex; align-items: center; font: 900 16px 'Consolas', monospace; margin: 0 8px; }
-  .page-tags .node119 > p {  text-align: center; }
+    .page-tags .node118 > p { margin-bottom: 13px; }
+    .page-tags .node118 > div { display: flex; margin-bottom: 15px; min-height: 33px; }
+      .page-tags .node118 > div input { flex-basis: 150px; }
+      .page-tags .node118 > div .action-btn { display: none; min-width: 98px; margin-left: 8px; }
+        .page-tags .node118 > div .action-btn#merge svg { position: relative; top: 3px; }
+      .page-tags .node118 > div .arrow { display: flex; align-items: center; font: 900 16px 'Consolas', monospace; margin: 0 8px; }
+  .page-tags .node119 > p { margin-top: 50px; }
   .page-tags .node119 .tags { margin-top: 20px; display: flex; flex-wrap: wrap; }
-    .page-tags .node119 .tags > * { background-color: #f0f2f5; margin: 0 10px 10px 0; padding: 3px 8px; border-radius: 3px; color: #566d96; font-weight: 500; font-size: 13px; }
+    .page-tags .node119 .tags > * { background-color: #f0f2f5; margin: 0 10px 10px 0; padding: 3px 8px; border-radius: 3px; color: #566d96; font-size: 13px; }
+.page-tags .node119 .tags > * b { font-weight: 500; }
 
 .page-help {  }
   .page-help .row1 { margin: 60px 0; }

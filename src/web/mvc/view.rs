@@ -687,35 +687,39 @@ impl View {
     })
   }
 
-  pub fn v_tags(&self, tags: Vec<(u32, String)>) -> Result<Markup> {
+  pub fn v_tags(&self, tags: Vec<(u32, String, u32)>) -> Result<Markup> {
     Ok(html! {
       (self.mar_header()?)
 
       .page-tags {
         .container {
           .node118 {
-            .edit {
-              span.action-btn#edit {
-                "Modify"
-                (self.svg_sprite("edit", "", ""))
-              }
+            p { b { "Edit tag" } }
+            div {
               input type="text" id="from" placeholder="e.g. \"authorized\"" {  }
               span.arrow { "=>" }
               input type="text" id="to" placeholder="e.g. \"mischief\"" {  }
-            }
-            .delete {
+              .action-btn#rename {
+                "Rename"
+                (self.svg_sprite("edit", "", ""))
+              }
               .action-btn.red#delete {
                 "Delete"
                 (self.svg_sprite("trash-alt", "", ""))
               }
-              input type="text" placeholder="e.g. \"motto\"" {  }
+              .action-btn.orange#merge {
+                "Merge"
+                (self.svg_sprite("project-diagram", "", ""))
+              }
             }
           }
           .node119 {
             p { b { "List of graffiti tags" } }
             .tags {
-              @for (id, tag) in tags {
-                a href="#" data-id=(id) { (tag) }
+              @for (id, tag, count) in tags {
+                a href="#" data-id=(id) data-tag=(tag) data-count=(count) {
+                  b { (tag) } " | " (count)
+                }
               }
             }
           }

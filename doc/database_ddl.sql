@@ -1,7 +1,7 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Thu May 28 22:16:29 2020
+-- File generated with SQLiteStudio v3.2.1 on Sat Aug 22 18:07:25 2020
 --
--- Text encoding used: System
+-- Text encoding used: UTF-8
 --
 PRAGMA foreign_keys = off;
 BEGIN TRANSACTION;
@@ -81,7 +81,12 @@ create table graffiti_tag (
   graffiti_id INTEGER references graffiti (id) 
                       not null,
   tag_id      INTEGER references tag (id) 
-                      not null
+                      not null,
+  unique (
+    graffiti_id,
+    tag_id
+  )
+  on conflict replace
 );
 
 
