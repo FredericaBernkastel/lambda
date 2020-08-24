@@ -130,9 +130,10 @@ select { padding: 1px 0; }
 
 .header { margin-bottom: 15px; }
   .header .logo { font-family: Consolas, monaco, monospace; text-align: center; font-weight: bold; font-size: 32px; margin: 30px 0; }
-  .header .nav-menu { font-size: 16px; display: flex; border: solid 1px #dbdbdb; padding: 10px 20px; }
-    .header .nav-menu .pages > a { margin-right: 30px; }
-    .header .nav-menu .user { margin-left: auto; display: flex; align-items: center; }
+  .header .nav-menu { font-size: 16px; display: flex; border: solid 1px #dbdbdb; }
+    .header .nav-menu .pages > a { padding: 9px 15px; display: inline-block; }
+    .header .nav-menu .pages > a.active { background-color: #dbdbdb; }
+    .header .nav-menu .user { margin-left: auto; padding-right: 20px; display: flex; align-items: center; }
       .header .nav-menu .user .icon-user { width: 15px; height: 15px; margin-right: 8px; color: #dbdbdb; }
       .header .nav-menu .user .logout { width: 15px; height: 15px; margin-left: 8px; cursor: pointer; }
 
@@ -363,6 +364,7 @@ select { padding: 1px 0; }
 .page-tags {  }
   .page-tags .node118 { margin-bottom: 15px; }
     .page-tags .node118 > p { margin-bottom: 13px; }
+      .page-tags .node118 > p u { color: #0000ff; margin-left: 0.5em; }
     .page-tags .node118 > div { display: flex; margin-bottom: 15px; min-height: 33px; }
       .page-tags .node118 > div input { flex-basis: 150px; }
       .page-tags .node118 > div .action-btn { display: none; min-width: 98px; margin-left: 8px; }
@@ -375,12 +377,13 @@ select { padding: 1px 0; }
 
 .page-help {  }
   .page-help .row1 { margin: 60px 0; }
-  .page-help .row2 { display: flex; justify-content: space-between; margin-bottom: 60px; }
+  .page-help .row2 { display: flex; margin-bottom: 60px; }
     .page-help .row2 > * { flex-basis: calc(100% / 3 - 15px); }
     .page-help .row2 > * + * { border-left: solid 1px #dbdbdb; padding-left: 15px; flex-basis: calc(100% / 3 - 5px); }
       .page-help .row2 > * > p { min-height: 76px; margin-bottom: 15px; }
   .page-help .row3 { margin-bottom: 30px; }
-    .page-help .row3 > p { text-align: right; }
+    .page-help .row3 > .contact { text-align: right; }
+    .page-help .row3 > p { margin-bottom: 20px; }
 
 .page-login { height: 100%; display: flex; align-items: center; justify-content: center; }
   .page-login .login { border: 1px solid #cdcdcd; box-shadow: 0 0 10px 0 #cccccc; background: #fbfbfb; border-radius: 3px; color: #636363; min-width: 300px; }

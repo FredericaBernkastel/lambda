@@ -17,6 +17,7 @@ impl View {
       html lang="en" {
         head {
           meta http-equiv="Content-Type" content="text/html; charset=utf-8";
+          meta name="generator" content={ "lambda v" (env!("CARGO_PKG_VERSION"))};
           meta name="viewport" content="width=device-width";
 
           link rel="stylesheet" href={ (self.root_url) "static/vendors.css" } type="text/css" media="screen";
@@ -694,7 +695,10 @@ impl View {
       .page-tags {
         .container {
           .node118 {
-            p { b { "Edit tag" } }
+            p {
+              b { "Modify/delete tag" }
+              a href={ (self.root_url) "views/help#tags" } { "  " u { "?" } }
+            }
             div {
               input type="text" id="from" placeholder="e.g. \"authorized\"" {  }
               span.arrow { "=>" }
@@ -747,31 +751,38 @@ impl View {
                 "It is possible to check or add entries as well as search for them in the Graffiti and
                  Authors menu via the pertinent buttons and submenus."
               }
-              a data-fancybox="" href={ (self.root_url) "static/img/help1.png" } {
-                img src={ (self.root_url) "static/img/help1.png" };
+              a data-fancybox="" href={ (self.root_url) "static/img/help/help1.png" } {
+                img src={ (self.root_url) "static/img/help/help1.png" };
               }
             }
             div {
               p {
                 "Modification of existing entries is also possible inside the entry's page."
               }
-              a data-fancybox="" href={ (self.root_url) "static/img/help2.png" } {
-                img src={ (self.root_url) "static/img/help2.png" };
-              }
-            }
-            div {
-              p {
-                "It is also possible to add, delete or modify any tags of the database in the tag menu,
-                 these tags come to use in the graffiti, where they can be added or deleted at will and
-                 will help with the search and organization of them."
-              }
-              a data-fancybox="" href={ (self.root_url) "static/img/help3.png" } {
-                img src={ (self.root_url) "static/img/help3.png" };
+              a data-fancybox="" href={ (self.root_url) "static/img/help/help2.png" } {
+                img src={ (self.root_url) "static/img/help/help2.png" };
               }
             }
           }
           .row3 {
+            a name="tags" {  }
+            h3 { "Tag editing" }
             p {
+              "Type only an existing tag in order to be able to delete it:"
+              br;
+              img src={ (self.root_url) "static/img/help/help4.png" };
+            }
+            p {
+              "Type an existing tag in the first field and a non existing tag in the second in order to rename it:"
+              br;
+              img src={ (self.root_url) "static/img/help/help5.png" };
+            }
+            p {
+              "Type an existing tag in the first field and another existing tag in the second field in order to merge them into 1:"
+              br;
+              img src={ (self.root_url) "static/img/help/help6.png" };
+            }
+            p.contact {
               b { "Technical support: " } "email@example.com"
             }
           }

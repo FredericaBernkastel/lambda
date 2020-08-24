@@ -648,6 +648,28 @@ $(function(){
         }
       });
     });
+
+    let menu_active = () => { switch (__path_t) {
+      case '/home': return 'views/home';
+      case '/graffitis':
+      case '/graffitis/page/:page':
+      case '/graffitis/search/:x-data':
+      case '/graffitis/search/:x-data/page/:page':
+      case '/graffiti/add':
+      case '/graffiti/:id':
+      case '/graffiti/:id/edit': return 'views/graffitis';
+      case '/authors':
+      case '/authors/page/:page':
+      case '/authors/search/:x-data':
+      case '/authors/search/:x-data/page/:page':
+      case '/author/add':
+      case '/author/:id':
+      case '/author/:id/edit': return 'views/authors';
+      case '/tags': return 'views/tags';
+      case '/help': return 'views/help';
+      default: return '';
+    }};
+    $(`.header .nav-menu .pages [href*='${menu_active()}']`).addClass('active');
   }
 
   /* /login                     
