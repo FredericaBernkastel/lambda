@@ -25,7 +25,7 @@ impl View {
           script type="text/javascript" src={ (self.root_url) "static/vendors.js" } {  }
           script type="text/javascript" src={ (self.root_url) "static/script.js" } {  }
 
-          title { "Graffiti database" }
+          title { "Base de datos de grafitis" }
 
           script type="text/javascript" {
             "var __glob = " (PreEscaped(js_glob.to_string())) ";"
@@ -42,15 +42,15 @@ impl View {
     Ok(html! {
       .page-login {
         .login {
-          p.title { "Graffiti database" }
+          p.title { "Base de datos de grafitis" }
           .form {
             .input-wrapper {
               .icon { (self.svg_sprite("user", "", "")) }
-              input#login type="text" placeholder="username";
+              input#login type="text" placeholder="usuario";
             }
             .input-wrapper {
               .icon { (self.svg_sprite("key", "", "")) }
-              input#password type="password" placeholder="password";
+              input#password type="password" placeholder="contraseña";
             }
             p.si-error {  }
             button#submit
@@ -61,7 +61,7 @@ impl View {
                 (self.svg_sprite("spinner", "fa-spinner", ""))
               }).into_string())
               {
-                "login" span.icon { (self.svg_sprite("sign-in-alt", "", "")) }
+                "iniciar sesión" span.icon { (self.svg_sprite("sign-in-alt", "", "")) }
               }
           }
         }
@@ -84,7 +84,7 @@ impl View {
           .actions-wrapper {
             a href={ (self.root_url) "views/graffiti/add" } {
               span.action-btn#add-graffiti {
-                "Add new graffiti"
+                "Añadir nuevo grafiti"
                 (self.svg_sprite("plus", "", ""))
               }
             }
@@ -94,10 +94,10 @@ impl View {
           .table {
             .row.head {
               .col1 { "ID" }
-              .col2 { "Graffiti" }
-              .col3 { "City" }
-              .col4 { "Date" }
-              .col5 { "Views" }
+              .col2 { "Grafiti" }
+              .col3 { "Ciudad" }
+              .col4 { "Fecha" }
+              .col5 { "Vistas" }
             }
             @for graffiti in graffitis {
               .row {
@@ -138,20 +138,20 @@ impl View {
         .container {
           .actions-wrapper {
             span.action-btn#save {
-              "Save"
+              "Guardar"
               (self.svg_sprite("save", "", ""))
             }
           }
           .row1 {
             .node107 {
               .node107_1.boxed {
-                p.box-title { "Information" }
+                p.box-title { "Información" }
                 .descr {
                   .row { .l { "ID: " }  .r { (graffiti.id) } }
-                  .row { .l { "Complaint ID: " }  .r { input#complaint_id type="text" placeholder="0000/0000" value=(graffiti.complaint_id); } }
-                  .row { .l { "Date: " }          .r { input#date type="text" placeholder="2018-01-01" value=(graffiti.date); } }
-                  .row { .l { "Time: " }          .r { input#time type="text" placeholder="00:00" value=(graffiti.time); } }
-                  .row { .l { "Shift: " }         .r {
+                  .row { .l { "ID de denuncia: " }  .r { input#complaint_id type="text" placeholder="0000/0000" value=(graffiti.complaint_id); } }
+                  .row { .l { "Fecha: " }          .r { input#date type="text" placeholder="2018-01-01" value=(graffiti.date); } }
+                  .row { .l { "Hora: " }          .r { input#time type="text" placeholder="00:00" value=(graffiti.time); } }
+                  .row { .l { "Turno: " }         .r {
                     select#shift_time {
                       @for shift in schema::ShiftTime::iter() {
                         @if graffiti.shift_time == shift {
@@ -162,7 +162,7 @@ impl View {
                       }
                     }
                   }}
-                  .row { .l { "Intervening: " }   .r { input#intervening type="text" value=(graffiti.intervening); } }
+                  .row { .l { "Intervinientes: " }   .r { input#intervening type="text" value=(graffiti.intervening); } }
                 }
               }
               .node107_2.boxed {
@@ -171,10 +171,10 @@ impl View {
               }
             }
             .node108.boxed {
-              p.box-title { "Author(s)" }
+              p.box-title { "Autor(es/as)" }
               .items {
                 .row.title {
-                  .l { "Author(s)" }
+                  .l { "Autor(es/as)" }
                   .r { "Indubitable" }
                 }
                 @for author in authors {
@@ -185,28 +185,28 @@ impl View {
               }
             }
             .node109.boxed {
-              p.box-title { "Notes" }
+              p.box-title { "Notas" }
               textarea#notes { (graffiti.notes) }
             }
             .node110.boxed {
-              p.box-title { "Location" }
+              p.box-title { "Localización" }
               .descr {
-                .row { .l { "Country: " }  .r { input#country type="text" value=(location.country); } }
-                .row { .l { "City: " }     .r { input#city type="text" value=(location.city); } }
-                .row { .l { "Street: " }   .r { input#street type="text" value=(location.street); } }
-                .row { .l { "Place: " }    .r { input#place type="text" value=(location.place); } }
-                .row { .l { "Property: " } .r { input#property type="text" value=(location.property); } }
+                .row { .l { "País: " }  .r { input#country type="text" value=(location.country); } }
+                .row { .l { "Ciudad: " }     .r { input#city type="text" value=(location.city); } }
+                .row { .l { "Calle: " }   .r { input#street type="text" value=(location.street); } }
+                .row { .l { "Lugar: " }    .r { input#place type="text" value=(location.place); } }
+                .row { .l { "Propiedad: " } .r { input#property type="text" value=(location.property); } }
               }
             }
           }
           .row2 {
             .node111.boxed {
-              p.box-title { "Images" }
+              p.box-title { "Imágenes" }
               .img_upload_wrp {
                 @for image in images {
                   (self.mar_image(Some(&image), "{}static/img/graffiti/{}/{}_p1.jpg")?)
                 }
-                .image.add title="Upload images" {
+                .image.add title="Subir imágenes" {
                   svg {use xlink:href={ (self.root_url) "static/img/box-add.svg#box-add" }{}}
                   div data-type="x-template" data=(self.mar_image(None, "")?.into_string()) { }
                 }
@@ -253,7 +253,7 @@ impl View {
         .container {
           .node101 {
             .node103.boxed {
-              p.box-title { "Most recent additions" }
+              p.box-title { "Adiciones más recientes" }
               .images {
                 @for graffiti in graffitis_recent {
                   a href={ (self.root_url) "views/graffiti/" (graffiti.id) } {
@@ -269,7 +269,7 @@ impl View {
               }
             }
             .node103.boxed {
-              p.box-title { "Last checked graffiti" }
+              p.box-title { "Últimos grafitis vistos" }
               .images {
                 @for graffiti in graffitis_last_checked {
                   a href={ (self.root_url) "views/graffiti/" (graffiti.id) } {
@@ -287,11 +287,11 @@ impl View {
           }
           .node102 {
             .node104.boxed {
-              p.box-title { "Recent activity map" }
+              p.box-title { "Mapa de actividad reciente" }
               .map data=(json!(map_aggregate).to_string()) {}
             }
             .node105.boxed {
-              p.box-title { "Last checked authors" }
+              p.box-title { "Últimos autores vistos" }
               .authors {
                 @for (id, name) in authors_last_checked {
                   a href={ (self.root_url) "views/author/" (id) } { (name) }
@@ -334,28 +334,28 @@ impl View {
         .container {
           .actions-wrapper {
             a.action-btn#edit href={ (self.root_url) "views/graffiti/" (graffiti.id) "/edit" } {
-              "Modify graffiti"
+              "Modificar grafiti"
               (self.svg_sprite("edit", "", ""))
             }
             span.action-btn.red#delete {
-              "Delete"
+              "Borrar"
               (self.svg_sprite("trash-alt", "", ""))
             }
           }
           .row1 {
             .node100.boxed {
-              p.box-title { "Information" }
+              p.box-title { "Información" }
               .descr {
-                .row { .l { "Graffiti ID: " } .r { (graffiti.id) } }
-                .row { .l { "Complaint ID: " } .r { (graffiti.complaint_id) } }
-                .row { .l { "Date: " } .r { (graffiti.datetime.map_or("".into(), |x| util::format_timestamp(x as u64, "%Y-%m-%d"))) } }
-                .row { .l { "Time: " } .r { (graffiti.datetime.map_or("".into(), |x| util::format_timestamp(x as u64, "%H:%M"))) } }
-                .row { .l { "Shift: " } .r { (graffiti.shift_time.map_or("".into(), |x| x.to_string())) } }
-                .row { .l { "Intervening: " } .r { (graffiti.intervening) } }
+                .row { .l { "ID de grafiti: " } .r { (graffiti.id) } }
+                .row { .l { "ID de denuncia: " } .r { (graffiti.complaint_id) } }
+                .row { .l { "Fecha: " } .r { (graffiti.datetime.map_or("".into(), |x| util::format_timestamp(x as u64, "%Y-%m-%d"))) } }
+                .row { .l { "Hora: " } .r { (graffiti.datetime.map_or("".into(), |x| util::format_timestamp(x as u64, "%H:%M"))) } }
+                .row { .l { "Turno: " } .r { (graffiti.shift_time.map_or("".into(), |x| x.to_string())) } }
+                .row { .l { "Intervinientes: " } .r { (graffiti.intervening) } }
               }
             }
             a.link-prev href="#" {
-              (self.svg_sprite("angle-double-left", "", "Previous image"))
+              (self.svg_sprite("angle-double-left", "", "Imagen anterior"))
             }
             .node102 {
               .graffiti-image {
@@ -375,7 +375,7 @@ impl View {
               }
             }
             a.link-next href="#" {
-              (self.svg_sprite("angle-double-right", "", "Next image"))
+              (self.svg_sprite("angle-double-right", "", "Imagen siguiente"))
             }
             .node101.boxed {
               p.box-title { "Author(s)" }
@@ -384,7 +384,7 @@ impl View {
                   @let classname =
                     format!("item {}", if author.indubitable { "checked" } else { "" });
                   .(classname) {
-                    (self.svg_sprite("check", "", "checked"))
+                    (self.svg_sprite("check", "", "indubitable"))
                     a href={ (self.root_url) "views/author/" (author.id) } {
                       (author.name)
                     }
@@ -395,17 +395,17 @@ impl View {
           }
           .row2 {
             .node104.boxed {
-              p.box-title { "Location" }
+              p.box-title { "Localización" }
               .descr {
-                .row { .l { "Country: " } .r { (location.country) } }
-                .row { .l { "City: " } .r { (location.city) } }
-                .row { .l { "Street: " } .r { (location.street) } }
-                .row { .l { "Place: " } .r { (location.place) } }
-                .row { .l { "Property: " } .r { (location.property) } }
+                .row { .l { "País: " } .r { (location.country) } }
+                .row { .l { "Ciudad: " } .r { (location.city) } }
+                .row { .l { "Calle: " } .r { (location.street) } }
+                .row { .l { "Lugar: " } .r { (location.place) } }
+                .row { .l { "Propiedad: " } .r { (location.property) } }
               }
             }
             .node105.boxed {
-              p.box-title { "Notes" }
+              p.box-title { "Notas" }
               .descr { (util::markup_br(graffiti.notes)) }
             }
             .node106 {
@@ -434,7 +434,7 @@ impl View {
           .actions-wrapper {
             a href={ (self.root_url) "views/author/add" } {
               span.action-btn#add-author {
-                "Add new author"
+                "Añadir nuevo autor"
                 (self.svg_sprite("plus", "", ""))
               }
             }
@@ -444,12 +444,12 @@ impl View {
           .table {
             .row.head {
               .col1 { "ID" }
-              .col2 { "Image" }
-              .col3 { "Name" }
-              .col4 { "Age" }
-              .col5 { "Graffiti" }
-              .col6 { "Home city" }
-              .col7 { "Views" }
+              .col2 { "Imagen" }
+              .col3 { "Nombre" }
+              .col4 { "Edad" }
+              .col5 { "Grafitis" }
+              .col6 { "Ciudad de origen" }
+              .col7 { "Vistas" }
             }
             @for author in authors {
               .row {
@@ -490,7 +490,7 @@ impl View {
           .actions-wrapper {
             a href="#" {
               span.action-btn#save {
-                "Save"
+                "Guardar"
                 (self.svg_sprite("save", "", ""))
               }
             }
@@ -498,13 +498,13 @@ impl View {
           .row1 {
             .node116 {
               .node116_1.boxed {
-                p.box-title { "Information" }
+                p.box-title { "Información" }
                 .descr {
-                  .row { .l { "Name: " }        .r { input#name type="text" value=(author.name); } }
-                  .row { .l { "Age: " }         .r { input#age type="number" value=(author.age); } }
-                  .row { .l { "Height (cm): " } .r { input#height type="number" value=(author.height); } }
-                  .row { .l { "Home city: " }   .r { input#home_city type="text" value=(author.home_city); } }
-                  .row { .l { "Handedness: " }  .r {
+                  .row { .l { "Nombre: " }        .r { input#name type="text" value=(author.name); } }
+                  .row { .l { "Edad: " }         .r { input#age type="number" value=(author.age); } }
+                  .row { .l { "Altura (cm): " } .r { input#height type="number" value=(author.height); } }
+                  .row { .l { "Ciudad de origen: " }   .r { input#home_city type="text" value=(author.home_city); } }
+                  .row { .l { "Mano dominante: " }  .r {
                     select#handedness {
                       @for variant in schema::Handedness::iter() {
                         @if author.handedness == variant {
@@ -518,22 +518,22 @@ impl View {
                 }
               }
               .node116_2.boxed {
-                p.box-title { "Social networks" br; span.small { "(one link per line)" } }
+                p.box-title { "Redes sociales" br; span.small { "(un link por línea)" } }
                 textarea#social_networks rows="4" { (author.social_networks) }
               }
             }
             .node117 {
               .node117_1.boxed {
-                p.box-title { "Notes" }
+                p.box-title { "Notas" }
                 textarea#notes { (author.notes) }
               }
               .node117_2.boxed {
-                p.box-title { "Images" }
+                p.box-title { "Imagenes" }
                 .img_upload_wrp {
                   @for image in images {
                     (self.mar_image(Some(&image), "{}static/img/author/{}/{}_p1.jpg")?)
                   }
-                  .image.add title="Upload images" {
+                  .image.add title="Subir imágenes" {
                     svg {use xlink:href={ (self.root_url) "static/img/box-add.svg#box-add" }{}}
                     div data-type="x-template" data=(self.mar_image(None, "")?.into_string()) { }
                   }
@@ -566,11 +566,11 @@ impl View {
         .container {
           .actions-wrapper {
             a.action-btn#edit href={ (self.root_url) "views/author/" (author.id) "/edit" } {
-              "Modify author"
+              "Modificar autor"
               (self.svg_sprite("edit", "", ""))
             }
             span.action-btn.red#delete {
-              "Delete"
+              "Borrar"
               (self.svg_sprite("trash-alt", "", ""))
             }
           }
@@ -578,7 +578,7 @@ impl View {
             .node113 {
               .node113_1 {
                 a.link-prev href="#" {
-                  (self.svg_sprite("angle-double-left", "", "Previous image"))
+                  (self.svg_sprite("angle-double-left", "", "Imagen anterior"))
                 }
                 .author-image {
                   @if let Some(image) = images.get(0) {
@@ -591,22 +591,22 @@ impl View {
                   }
                 }
                 a.link-next href="#" {
-                  (self.svg_sprite("angle-double-right", "", "Next image"))
+                  (self.svg_sprite("angle-double-right", "", "Imagen siguiente"))
                 }
               }
               .node113_2.boxed {
-                p.box-title { "Information" }
+                p.box-title { "Información" }
                 .descr {
-                  .row { .l { "Name: " }        .r { (author.name) } }
-                  .row { .l { "Age: " }         .r { (author.age.map_or("".into(), |x| x.to_string())) } }
-                  .row { .l { "Height: " }      .r { (author.height.map_or("".into(), |x| format!("{}cm", x))) } }
-                  .row { .l { "Handedness: " }  .r { (author.handedness.map_or("".into(), |x| x.to_string())) } }
-                  .row { .l { "Home city: " }   .r { (author.home_city) } }
-                  .row { .l { "Graffiti: " }    .r { (graffiti_count)} }
+                  .row { .l { "Nombre: " }        .r { (author.name) } }
+                  .row { .l { "Edad: " }         .r { (author.age.map_or("".into(), |x| x.to_string())) } }
+                  .row { .l { "Altura: " }      .r { (author.height.map_or("".into(), |x| format!("{}cm", x))) } }
+                  .row { .l { "Mano dominante: " }  .r { (author.handedness.map_or("".into(), |x| x.to_string())) } }
+                  .row { .l { "Ciudad de origen: " }   .r { (author.home_city) } }
+                  .row { .l { "Grafitis: " }    .r { (graffiti_count)} }
                 }
               }
               .node113_3.boxed {
-                p.box-title { "Social networks" }
+                p.box-title { "Redes sociales" }
                 .descr {
                   @for line in author.social_networks.lines() {
                     a href=(line) target="_blank" { (line) }
@@ -616,18 +616,18 @@ impl View {
             }
             .node114 {
               .node114_1.boxed {
-                p.box-title { "Notes" }
+                p.box-title { "Notas" }
                 .descr { (util::markup_br(author.notes)) }
               }
               .node114_2.boxed {
-                p.box-title { "Zones of activity" }
+                p.box-title { "Zonas de actividad" }
                 .descr {
-                  .row { .l { "Countries: " } .r {
+                  .row { .l { "Países: " } .r {
                     @for (country, count) in aggregate_counties {
                       (format!("{} ({}), ", country, count))
                     }
                   } }
-                  .row { .l { "Cities: " } .r {
+                  .row { .l { "Ciudades: " } .r {
                     @for (city, count) in aggregate_cities {
                       (format!("{} ({}), ", city, count))
                     }
@@ -636,12 +636,12 @@ impl View {
               }
               .node114_3 {
                 .map data=(json!(aggregate_gps).to_string()) { }
-                p { "Activity map of author" }
+                p { "Mapa de actividad del autor" }
               }
             }
             .node115 {
               .node115_1.boxed {
-                p.box-title { "Previous companions" }
+                p.box-title { "Compañeros anteriores" }
                 .items {
                   @for (id, name) in aggregate_companions {
                     .item { a href={ (self.root_url) "views/author/" (id) } { (name) } }
@@ -649,10 +649,10 @@ impl View {
                 }
               }
               .node115_2.boxed {
-                p.box-title { "Relevant graffiti" }
+                p.box-title { "Grafitis relevantes" }
                 .items {
                   .item {
-                    p { "most recent" }
+                    p { "más reciente" }
                     @if let Some((id, thumbnail)) = graffiti_recent {
                       a.img href={ (self.root_url) "views/graffiti/" (id) } {
                         @if let Some(image) = thumbnail {
@@ -666,7 +666,7 @@ impl View {
                     }
                   }
                   .item {
-                    p { "most viewed" }
+                    p { "más visto" }
                     @if let Some((id, thumbnail)) = graffiti_most_viewed {
                       a.img href={ (self.root_url) "views/graffiti/" (id) } {
                         @if let Some(image) = thumbnail {
@@ -696,7 +696,7 @@ impl View {
         .container {
           .node118 {
             p {
-              b { "Modify/delete tag" }
+              b { "Modificar/borrar tag" }
               a href={ (self.root_url) "views/help#tags" } { "  " u { "?" } }
             }
             div {
@@ -704,21 +704,21 @@ impl View {
               span.arrow { "=>" }
               input type="text" id="to" placeholder="e.g. \"mischief\"" {  }
               .action-btn#rename {
-                "Rename"
+                "Renombrar"
                 (self.svg_sprite("edit", "", ""))
               }
               .action-btn.red#delete {
-                "Delete"
+                "Borrar"
                 (self.svg_sprite("trash-alt", "", ""))
               }
               .action-btn.orange#merge {
-                "Merge"
+                "Unir"
                 (self.svg_sprite("project-diagram", "", ""))
               }
             }
           }
           .node119 {
-            p { b { "List of graffiti tags" } }
+            p { b { "Lista de tags de grafitis" } }
             .tags {
               @for (id, tag, count) in tags {
                 a href="#" data-id=(id) data-tag=(tag) data-count=(count) {
@@ -740,16 +740,13 @@ impl View {
         .container {
           .row1 {
             p {
-              "Welcome to the Graffiti Database, this site was designed to provide a complete tool for
-               the management of graffiti images and their authors, as well as a faciliator in the tasks
-               of organizing and analyzing data."
+			   "Bienvenidos a la base de datos de grafitis, este sitio fue diseñado para brindar una herramienta completa para el manejo de imágenes de graffiti y sus autores, así como un facilitador en las tareas de organización y análisis de datos."
             }
           }
           .row2 {
             div {
               p {
-                "It is possible to check or add entries as well as search for them in the Graffiti and
-                 Authors menu via the pertinent buttons and submenus."
+                "Es posible verificar o agregar entradas, así como buscarlas en el menú Graffiti y Autores a través de los botones y submenús correspondientes."
               }
               a data-fancybox="" href={ (self.root_url) "static/img/help/help1.png" } {
                 img src={ (self.root_url) "static/img/help/help1.png" };
@@ -757,7 +754,7 @@ impl View {
             }
             div {
               p {
-                "Modification of existing entries is also possible inside the entry's page."
+                "La modificación de las entradas existentes también es posible dentro de la página de la entrada."
               }
               a data-fancybox="" href={ (self.root_url) "static/img/help/help2.png" } {
                 img src={ (self.root_url) "static/img/help/help2.png" };
@@ -766,24 +763,24 @@ impl View {
           }
           .row3 {
             a name="tags" {  }
-            h3 { "Tag editing" }
+            h3 { "Edición de tags" }
             p {
-              "Type only an existing tag in order to be able to delete it:"
+              "Escriba solo una etiqueta existente para poder eliminarla:"
               br;
               img src={ (self.root_url) "static/img/help/help4.png" };
             }
             p {
-              "Type an existing tag in the first field and a non existing tag in the second in order to rename it:"
+              "Escriba una etiqueta existente en el primer campo y una etiqueta no existente en el segundo para cambiarle el nombre:"
               br;
               img src={ (self.root_url) "static/img/help/help5.png" };
             }
             p {
-              "Type an existing tag in the first field and another existing tag in the second field in order to merge them into 1:"
+              "Escriba una etiqueta existente en el primer campo y otra etiqueta existente en el segundo campo para fusionarlas en 1:"
               br;
               img src={ (self.root_url) "static/img/help/help6.png" };
             }
             p.contact {
-              b { "Technical support: " } "email@example.com"
+              b { "Soporte técnico: " } "email@example.com"
             }
           }
         }
@@ -823,7 +820,7 @@ impl View {
             .message {  }
             .actions-wrapper {
               span.action-btn.red#ok { "Ok" }
-              span.action-btn#cancel { "Cancel" }
+              span.action-btn#cancel { "Cancelar" }
             }
           }
         }
@@ -831,19 +828,19 @@ impl View {
 
       .header {
         .container {
-          .logo { "Graffiti database" }
+          .logo { "Base de datos de grafitis" }
           .nav-menu {
             .pages {
-              a href={ (self.root_url) "views/home" } { "Home" }
-              a href={ (self.root_url) "views/graffitis" } { "Graffiti" }
-              a href={ (self.root_url) "views/authors" } { "Authors" }
+              a href={ (self.root_url) "views/home" } { "Inicio" }
+              a href={ (self.root_url) "views/graffitis" } { "Grafitis" }
+              a href={ (self.root_url) "views/authors" } { "Autores" }
               a href={ (self.root_url) "views/tags" } { "Tags" }
-              a href={ (self.root_url) "views/help" } { "Help" }
+              a href={ (self.root_url) "views/help" } { "Ayuda" }
             }
             .user {
               (self.svg_sprite("user", "icon-user", ""))
               span.login { (self.user.as_ref()?.login) }
-              (self.svg_sprite("sign-out-alt", "logout", "logout"))
+              (self.svg_sprite("sign-out-alt", "logout", "cerrar sesión"))
             }
           }
         }
@@ -995,7 +992,7 @@ impl View {
     html! {
       .search.(classname) {
         .title {
-          "Advanced search"
+          "Búsqueda avanzada"
           .icon
             data-up=(self.svg_sprite("angle-up", "", "").into_string())
             data-down=(self.svg_sprite("angle-down", "", "").into_string()) {
@@ -1005,10 +1002,10 @@ impl View {
         .wrp {
           .row1 {
             .node108.boxed {
-              p.box-title { "Author(s)" }
+              p.box-title { "Autor(es/as)" }
               .items {
                 .row.title {
-                  .l { "Author(s)" }
+                  .l { "Autor(es/as)" }
                   .r { "Indubitable" }
                 }
                 @for author in request.authors {
@@ -1019,23 +1016,23 @@ impl View {
               }
             }
             .node120.boxed {
-              p.box-title { "Location" }
+              p.box-title { "Localización" }
               .descr {
-                .row { .l { "Country: " }  .r { input#country type="text" value=(request.country.unwrap_or("".into())); } }
-                .row { .l { "City: " }     .r { input#city type="text" value=(request.city.unwrap_or("".into())); } }
-                .row { .l { "Street: " }   .r { input#street type="text" value=(request.street.unwrap_or("".into())); } }
-                .row { .l { "Place: " }    .r { input#place type="text" value=(request.place.unwrap_or("".into())); } }
-                .row { .l { "Property: " } .r { input#property type="text" value=(request.property.unwrap_or("".into())); } }
+                .row { .l { "País: " }  .r { input#country type="text" value=(request.country.unwrap_or("".into())); } }
+                .row { .l { "Ciudad: " }     .r { input#city type="text" value=(request.city.unwrap_or("".into())); } }
+                .row { .l { "Calle: " }   .r { input#street type="text" value=(request.street.unwrap_or("".into())); } }
+                .row { .l { "Lugar: " }    .r { input#place type="text" value=(request.place.unwrap_or("".into())); } }
+                .row { .l { "Propiedad: " } .r { input#property type="text" value=(request.property.unwrap_or("".into())); } }
               }
             }
             .node120.date.boxed {
-              p.box-title { "Date" }
+              p.box-title { "Fecha" }
               .descr {
-                .row { .l { "Before: " } .r {
+                .row { .l { "Antes de: " } .r {
                   input#date_before type="text"
                     value=(request.date_before.unwrap_or("".into())) placeholder="2018-01-01 00:00";
                 } }
-                .row { .l { "After: " }  .r {
+                .row { .l { "Después de: " }  .r {
                   input#date_after type="text"
                     value=(request.date_after.unwrap_or("".into())) placeholder="2018-01-01 00:00";
                 } }
@@ -1053,7 +1050,7 @@ impl View {
                 }
               }
               .node121_2.boxed {
-                p.box-title { "Number of authors" }
+                p.box-title { "Número de autores" }
                 input#authors_number type="number" min="0" value=(request.authors_number.map(|x| x.to_string()).unwrap_or("".into()));
               }
             }
@@ -1061,7 +1058,7 @@ impl View {
           .actions-wrapper {
             a href="#" {
               span.action-btn#search {
-                "Search"
+                "Buscar"
                 (self.svg_sprite("search", "", ""))
               }
             }
@@ -1083,7 +1080,7 @@ impl View {
     html! {
       .search.(classname) {
         .title {
-          "Advanced search"
+          "Búsqueda avanzada"
           .icon
             data-up=(self.svg_sprite("angle-up", "", "").into_string())
             data-down=(self.svg_sprite("angle-down", "", "").into_string()) {
@@ -1093,10 +1090,10 @@ impl View {
         .wrp {
           .row1 {
             .node108.boxed {
-              p.box-title { "Companion with" }
+              p.box-title { "Compañero con" }
               .items {
                 .row.title {
-                  .l { "Author(s)" }
+                  .l { "Autor(es/as)" }
                   .r { "Indubitable" }
                 }
                 @for author in request.companions {
@@ -1108,30 +1105,30 @@ impl View {
             }
             .node122 {
               .node122_1.boxed {
-                p.box-title { "Age" }
+                p.box-title { "Edad" }
                 .rows {
                   .row {
-                    .l { "Older than: " }
+                    .l { "Mayor de: " }
                     .r { input#age_min type="number" min="0" max="10000" // :<
                       value=(request.age_min.map(|x| x.to_string()).unwrap_or("".into())); }
                   }
                   .row {
-                    .l { "Younger than: " }
+                    .l { "Menor de: " }
                     .r { input#age_max type="number" min="0" max="10000"
                       value=(request.age_max.map(|x| x.to_string()).unwrap_or("".into())); }
                   }
                 }
               }
               .node122_1.boxed {
-                p.box-title { "Height" }
+                p.box-title { "Altura" }
                 .rows {
                   .row {
-                    .l { "Higher than: " }
+                    .l { "Superior a: " }
                     .r { input#height_min type="number" min="0" max="300"
                       value=(request.height_min.map(|x| x.to_string()).unwrap_or("".into())); }
                   }
                   .row {
-                    .l { "Shorter than: " }
+                    .l { "Inferior a: " }
                     .r { input#height_max type="number" min="0" max="300"
                       value=(request.height_max.map(|x| x.to_string()).unwrap_or("".into())); }
                   }
@@ -1140,7 +1137,7 @@ impl View {
             }
             .node123 {
               .node123_1.boxed {
-                p.box-title { "Handedness" }
+                p.box-title { "Mano dominante" }
                 select#handedness {
                   @if request.handedness.is_some() {
                     option hidden="" disabled="" value="" {  }
@@ -1162,18 +1159,18 @@ impl View {
                 } @else {
                   input#social_has type="checkbox";
                 }
-                label for="social_has" { "Has social network" }
+                label for="social_has" { "Tiene redes sociales" }
               }
             }
             .node124 {
               .node124_1.boxed {
-                p.box-title { "Home city" }
+                p.box-title { "Ciudad de origen" }
                 input#home_city type="text" value=(request.home_city.unwrap_or("".into()));
               }
               .node124_2.boxed {
                 p.box-title {
-                  "Active in" br;
-                  span.small { "[country/city/street]" }
+                  "Activo en" br;
+                  span.small { "[país/ciudad/calle]" }
                   .tags_wrp {
                     select.tags-input multiple="" autocomplete="off"  {
                       @for tag in request.active_in {
@@ -1189,7 +1186,7 @@ impl View {
           .actions-wrapper {
             a href="#" {
               span.action-btn#search {
-                "Search"
+                "Buscar"
                 (self.svg_sprite("search", "", ""))
               }
             }
