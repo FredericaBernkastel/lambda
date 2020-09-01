@@ -956,7 +956,7 @@ $(function(){
     }
 
     $wrapper.find('.actions-wrapper #delete').on('click', function(){
-      display_warning('Delete graffiti?', function(){
+      display_warning('Borrar grafiti?', function(){
         send_mutex = true;
         let data = {
           'cors_h': __cors_h,

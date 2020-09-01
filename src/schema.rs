@@ -18,8 +18,11 @@ pub struct Session {
 #[repr(u8)]
 #[derive(Display, Debug, Copy, Clone, PartialEq, Deserialize_repr, EnumIter)]
 pub enum ShiftTime {
+  #[strum(serialize = "Mañana")]
   Morning = 0,
+  #[strum(serialize = "Tarde")]
   Afternoon = 1,
+  #[strum(serialize = "Noche")]
   Night = 2,
 }
 
@@ -50,11 +53,11 @@ pub struct Location {
 #[repr(u8)]
 #[derive(Display, Debug, Copy, Clone, PartialEq, Deserialize_repr, EnumIter)]
 pub enum Handedness {
-  #[strum(serialize = "Right handed")]
+  #[strum(serialize = "Derecha")]
   RightHanded = 0,
-  #[strum(serialize = "Left handed")]
+  #[strum(serialize = "Izquierda")]
   LeftHanded = 1,
-  #[strum(serialize = "Ambidextrous")]
+  #[strum(serialize = "Ambidiextro/a")]
   Ambidextrous = 2,
 }
 

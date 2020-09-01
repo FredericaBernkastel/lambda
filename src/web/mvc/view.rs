@@ -379,7 +379,7 @@ impl View {
               (self.svg_sprite("angle-double-right", "", "Imagen siguiente"))
             }
             .node101.boxed {
-              p.box-title { "Author(s)" }
+              p.box-title { "Autor(es/as)" }
               .items {
                 @for author in authors {
                   @let classname =
@@ -926,8 +926,8 @@ impl View {
             (self.svg_sprite("chevron-circle-right", "", ""))
           };
           @match next_page {
-            Some(page) => a href=(link_fmt(page)?) { "next" (svg) },
-            None => span { "next" (svg) }
+            Some(page) => a href=(link_fmt(page)?) { "sig" (svg) },
+            None => span { "sig" (svg) }
           }
         }
       }
