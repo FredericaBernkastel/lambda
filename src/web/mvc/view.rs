@@ -1,11 +1,12 @@
 use super::model::{self, Model as View};
 use crate::{
+  map,
   error::{ErrorKind, Result},
-  schema, util,
+  schema, util
 };
 use error_chain::bail;
 use maud::{html, Markup, PreEscaped, DOCTYPE};
-use runtime_fmt::{rt_format, rt_format_args};
+use strfmt::Format;
 use serde_json::{json, Value as JsonValue};
 use std::collections::VecDeque;
 use strum::IntoEnumIterator;
@@ -204,7 +205,7 @@ impl View {
               p.box-title { "Images" }
               .img_upload_wrp {
                 @for image in images {
-                  (self.mar_image(Some(&image), "{}static/img/graffiti/{}/{}_p1.jpg")?)
+                  (self.mar_image(Some(&image), "{root_url}static/img/graffiti/{h0}/{hash}_p1.jpg")?)
                 }
                 .image.add title="Upload images" {
                   svg {use xlink:href={ (self.root_url) "static/img/box-add.svg#box-add" }{}}
@@ -531,7 +532,7 @@ impl View {
                 p.box-title { "Images" }
                 .img_upload_wrp {
                   @for image in images {
-                    (self.mar_image(Some(&image), "{}static/img/author/{}/{}_p1.jpg")?)
+                    (self.mar_image(Some(&image), "{root_url}static/img/author/{h0}/{hash}_p1.jpg")?)
                   }
                   .image.add title="Upload images" {
                     svg {use xlink:href={ (self.root_url) "static/img/box-add.svg#box-add" }{}}
@@ -894,7 +895,10 @@ impl View {
     .for_each(|x| pages.push_back(x));
 
     let link_fmt =
-      |page| rt_format!(link_tpl, self.root_url, page).map_err(|_| "invalid format template");
+      |page: i64| link_tpl.format(&map!{
+        "root_url" => self.root_url.clone(),
+        "id" => page.to_string()
+      }).map_err(|_| "invalid format template");
 
     Ok(html! {
       .navigation {
@@ -935,8 +939,11 @@ impl View {
 
   fn mar_image(&self, hash: Option<&str>, path_template: &str) -> Result<Markup> {
     let src = match hash {
-      Some(hash) => rt_format!(path_template, self.root_url, hash.get(0..=1)?, hash)
-        .map_err(|_| "invalid format template")?,
+      Some(hash) => path_template.format(&map!{
+        "root_url" => self.root_url.clone(),
+        "h0" => hash.get(0..=1)?.into(),
+        "hash" => hash.into()
+      }).map_err(|_| "invalid format template")?,
       None => "{src}".into(),
     };
 
@@ -1196,7 +1203,6 @@ impl View {
           }
         }
       }
-
     }
   }
 }

@@ -254,7 +254,7 @@ impl Model {
     .await?;
 
     let mar_navigation = self.mar_navigation(
-      "{}views/graffitis/page/{}",
+      "{root_url}views/graffitis/page/{id}",
       page,
       self.config.web.rows_per_page as i64,
       total as i64,
@@ -426,7 +426,7 @@ impl Model {
     .await?;
 
     let mar_navigation = self.mar_navigation(
-      &format!("{{}}views/graffitis/search/{}/page/{{}}", data),
+      &format!("{{root_url}}views/graffitis/search/{}/page/{{id}}", data),
       page,
       self.config.web.rows_per_page as i64,
       total as i64,
@@ -750,7 +750,7 @@ impl Model {
     .await?;
 
     let mar_navigation = self.mar_navigation(
-      "{}views/authors/page/{}",
+      "{root_url}views/authors/page/{id}",
       page,
       self.config.web.rows_per_page as i64,
       total as i64,
@@ -955,7 +955,7 @@ impl Model {
     .await?;
 
     let mar_navigation = self.mar_navigation(
-      &format!("{{}}views/authors/search/{}/page/{{}}", data),
+      &format!("{{root_url}}views/authors/search/{}/page/{{id}}", data),
       page,
       self.config.web.rows_per_page as i64,
       total,

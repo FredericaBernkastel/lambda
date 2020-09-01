@@ -1,5 +1,4 @@
 #![feature(proc_macro_hygiene)]
-#![feature(str_strip)]
 #![feature(try_trait)]
 #![feature(type_ascription)]
 #![feature(stmt_expr_attributes)]
