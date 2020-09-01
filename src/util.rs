@@ -6,6 +6,18 @@ use sha2::{Digest, Sha256};
 use std::io::Read;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+#[macro_export] macro_rules! map(
+  { $($key:expr => $value:expr),+ } => {
+    {
+      let mut m = ::std::collections::HashMap::<String, _>::new();
+      $(
+          m.insert($key.into(), $value);
+      )+
+      m
+    }
+  };
+);
+
 pub fn get_timestamp() -> u64 {
   SystemTime::now()
     .duration_since(UNIX_EPOCH)
