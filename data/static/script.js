@@ -722,7 +722,7 @@ $(function(){
             data = JSON.parse(data);
 
             switch(data.result){
-              case rpc.InvalidLogin: si_error('Invalid login or password!'); break;
+              case rpc.InvalidLogin: si_error('Nombre o contraseña incorrectos!'); break;
               case rpc.Success: window.location.reload(false); break;
               default: si_error(default_error); break;
             }
@@ -956,7 +956,7 @@ $(function(){
     }
 
     $wrapper.find('.actions-wrapper #delete').on('click', function(){
-      display_warning('Borrar grafiti?', function(){
+      display_warning('¿Borrar grafiti?', function(){
         send_mutex = true;
         let data = {
           'cors_h': __cors_h,
@@ -1169,7 +1169,7 @@ $(function(){
     }
 
     $wrapper.find('.actions-wrapper #delete').on('click', function(){
-      display_warning('Delete author?', function(){
+      display_warning('¿Borrar autor?', function(){
         send_mutex = true;
         let data = {
           'cors_h': __cors_h,

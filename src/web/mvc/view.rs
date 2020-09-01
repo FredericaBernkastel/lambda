@@ -701,9 +701,9 @@ impl View {
               a href={ (self.root_url) "views/help#tags" } { "  " u { "?" } }
             }
             div {
-              input type="text" id="from" placeholder="e.g. \"authorized\"" {  }
+              input type="text" id="from" placeholder="p.ej \"autorizado\"" {  }
               span.arrow { "=>" }
-              input type="text" id="to" placeholder="e.g. \"mischief\"" {  }
+              input type="text" id="to" placeholder="p.ej \"legal\"" {  }
               .action-btn#rename {
                 "Renombrar"
                 (self.svg_sprite("edit", "", ""))
