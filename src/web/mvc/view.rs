@@ -23,8 +23,8 @@ impl View {
 
           link rel="stylesheet" href={ (self.root_url) "static/vendors.css" } type="text/css" media="screen";
           link rel="stylesheet" href={ (self.root_url) "static/style.css" } type="text/css" media="screen";
-          script type="text/javascript" src={ (self.root_url) "static/vendors.js" } {  }
-          script type="text/javascript" src={ (self.root_url) "static/script.js" } {  }
+          script type="text/javascript" src={ (self.root_url) "static/vendors-es.js" } {  }
+          script type="text/javascript" src={ (self.root_url) "static/script-es.js" } {  }
 
           title { "Base de datos de grafitis" }
 
@@ -768,17 +768,17 @@ impl View {
             p {
               "Escriba solo una etiqueta existente para poder eliminarla:"
               br;
-              img src={ (self.root_url) "static/img/help/help4.png" };
+              img src={ (self.root_url) "static/img/help/help4-es.png" };
             }
             p {
               "Escriba una etiqueta existente en el primer campo y una etiqueta no existente en el segundo para cambiarle el nombre:"
               br;
-              img src={ (self.root_url) "static/img/help/help5.png" };
+              img src={ (self.root_url) "static/img/help/help5-es.png" };
             }
             p {
               "Escriba una etiqueta existente en el primer campo y otra etiqueta existente en el segundo campo para fusionarlas en 1:"
               br;
-              img src={ (self.root_url) "static/img/help/help6.png" };
+              img src={ (self.root_url) "static/img/help/help6-es.png" };
             }
             p.contact {
               b { "Soporte técnico: " } "email@example.com"
@@ -839,10 +839,10 @@ impl View {
               a href={ (self.root_url) "views/help" } { "Ayuda" }
             }
             .languages {
-              a href={ (self.root_url) "es" (self.path) } title="Español" alt="Español" {
+              a href={ (self.root_url) "es/views" (self.path) } title="Español" alt="Español" {
                 img src={ (self.root_url) "static/img/es.svg" };
               }
-              a href={ (self.root_url) "en" (self.path) } title="English" alt="English" {
+              a href={ (self.root_url) "en/views" (self.path) } title="English" alt="English" {
                 img src={ (self.root_url) "static/img/uk.svg" };
               }
             }
