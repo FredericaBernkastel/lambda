@@ -181,12 +181,12 @@ select { padding: 1px 0; }
   .page-graffitis .search .row1 { margin: 15px 0; width: 100%; display: flex; align-items: flex-start; }
     .page-graffitis .search .row1 > .node108 { margin-right: 15px; flex-basis: 233px; }
     .page-graffitis .search .row1 > .node120 { flex-basis: 390px; margin-right: 15px; }
-    .page-graffitis .search .row1 > .node120.date { flex-basis: 220px; }
+    .page-graffitis .search .row1 > .node120.date { flex-basis: 265px; }
     .page-graffitis .search .row1 .node120 .descr { display: flex; flex-direction: column; }
     .page-graffitis .search .row1 .node120 .descr > .row { display: flex; justify-content: space-between; }
     .page-graffitis .search .row1 .node120 .descr > .row + .row { margin-top: 8px; }
-      .page-graffitis .search .row1 .node120 .descr > .row > .l { text-align: right; min-width: 66px; margin-right: 14px;}
-      .page-graffitis .search .row1 > .node120.date .descr > .row > .l { min-width: 48px; }
+      .page-graffitis .search .row1 .node120 .descr > .row > .l { text-align: right; min-width: 72px; margin-right: 14px;}
+      .page-graffitis .search .row1 > .node120.date .descr > .row > .l { min-width: 82px; }
       .page-graffitis .search .row1 .node120 .descr > .row > .r { flex-grow: 1; }
     .page-graffitis .search .row1 > .node121 { display: flex; flex-direction: column; flex-grow: 1; }
       .page-graffitis .search .node121_1 { margin-bottom: 15px; }
@@ -197,7 +197,7 @@ select { padding: 1px 0; }
 
 .page-graffiti {  }
   .page-graffiti .row1 { display: flex; align-items: flex-start; }
-    .page-graffiti .row1 .node100 { flex-basis: 255px; margin-right: auto; }
+    .page-graffiti .row1 .node100 { flex-basis: 267px; margin-right: auto; }
       .page-graffiti .row1 .node100 .descr { display: flex; flex-direction: column; }
         .page-graffiti .row1 .node100 .descr > .row { display: flex; justify-content: space-between; }
         .page-graffiti .row1 .node100 .descr > .row + .row { margin-top: 8px; }
@@ -223,7 +223,7 @@ select { padding: 1px 0; }
       .page-graffiti .row2 .node104 .descr { display: flex; flex-direction: column; }
       .page-graffiti .row2 .node104 .descr > .row { display: flex; justify-content: space-between; }
       .page-graffiti .row2 .node104 .descr > .row + .row { margin-top: 8px; }
-        .page-graffiti .row2 .node104 .descr > .row > .l { text-align: right; font-weight: bold; min-width: 66px; margin-right: 14px;}
+        .page-graffiti .row2 .node104 .descr > .row > .l { text-align: right; font-weight: bold; min-width: 75px; margin-right: 14px;}
         .page-graffiti .row2 .node104 .descr > .row > .r { flex-grow: 1; }
     .page-graffiti .row2 .node105 { flex-basis: calc(100% / 3); margin: 0 15px; }
     .page-graffiti .row2 .node106 { margin-left: 15px; }
@@ -232,7 +232,7 @@ select { padding: 1px 0; }
 
 .page-graffiti-add {  }
   .page-graffiti-add .row1 { display: flex; align-items: flex-start; }
-    .page-graffiti-add .row1 > .node107 { flex-basis: 255px; display: flex; flex-direction: column; }
+    .page-graffiti-add .row1 > .node107 { flex-basis: 267px; display: flex; flex-direction: column; }
       .page-graffiti-add .row1 > .node107 > .node107_1 { margin-bottom: 15px; }
         .page-graffiti-add .row1 > .node107 > .node107_1 .row { display: flex; justify-content: space-between; }
         .page-graffiti-add .row1 > .node107 > .node107_1 .row + .row { margin-top: 8px; }
@@ -246,7 +246,7 @@ select { padding: 1px 0; }
       .page-graffiti-add .row1 .node110 .descr { display: flex; flex-direction: column; }
       .page-graffiti-add .row1 .node110 .descr > .row { display: flex; justify-content: space-between; }
       .page-graffiti-add .row1 .node110 .descr > .row + .row { margin-top: 8px; }
-        .page-graffiti-add .row1 .node110 .descr > .row > .l { text-align: right; font-weight: bold; min-width: 66px; margin-right: 14px;}
+        .page-graffiti-add .row1 .node110 .descr > .row > .l { text-align: right; font-weight: bold; min-width: 75px; margin-right: 14px;}
         .page-graffiti-add .row1 .node110 .descr > .row > .r { flex-grow: 1; }
   .page-graffiti-add .row2 { display: flex; margin-top: 15px; align-items: flex-start; }
     .page-graffiti-add .row2 .node111 { flex-basis: calc(100% / 3 * 2); margin-right: 15px; }
@@ -324,7 +324,7 @@ select { padding: 1px 0; }
       .page-author .row1 .node113_2 { margin-bottom: 15px; min-width: 310px; }
         .page-author .row1 .node113_2 .descr > .row { display: flex; justify-content: space-between; }
         .page-author .row1 .node113_2 .descr > .row + .row { margin-top: 8px; }
-          .page-author .row1 .node113_2 .descr > .row > .l { text-align: right; font-weight: bold; min-width: 90px; margin-right: 14px;}
+          .page-author .row1 .node113_2 .descr > .row > .l { text-align: right; font-weight: bold; min-width: 125px; margin-right: 14px;}
           .page-author .row1 .node113_2 .descr > .row > .r { flex-grow: 1; }
       .page-author .row1 .node113_3 { margin-right: auto; }
         .page-author .row1 .node113_3 .descr { display: flex; flex-direction: column; }
@@ -353,7 +353,7 @@ select { padding: 1px 0; }
       .page-author-add .row1 .node116_1 { margin-bottom: 15px; }
         .page-author-add .row1 .node116_1 .descr > .row { display: flex; justify-content: space-between; }
           .page-author-add .row1 .node116_1 .descr > .row + .row { margin-top: 8px; }
-            .page-author-add .row1 .node116_1 .descr > .row > .l { text-align: right; font-weight: bold; min-width: 90px; margin-right: 14px;}
+            .page-author-add .row1 .node116_1 .descr > .row > .l { text-align: right; font-weight: bold; min-width: 125px; margin-right: 14px;}
             .page-author-add .row1 .node116_1 .descr > .row > .r { flex-grow: 1; }
       .page-author-add .row1 .node116_2 textarea { white-space: pre; overflow-wrap: normal; }
     .page-author-add .row1 .node117 { display: flex; flex-direction: column; align-items: flex-start; flex-basis: 684px; }
