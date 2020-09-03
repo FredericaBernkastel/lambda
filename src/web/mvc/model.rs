@@ -19,7 +19,8 @@ pub struct Model {
   pub root_url: String,
   pub user: Option<schema::User>,
   pub get_data: HashMap<String, String>,
-  path: String,
+  pub path: String,
+  pub path_t: String,
 }
 
 pub async fn main(
@@ -71,7 +72,8 @@ pub async fn main(
         config,
         user,
         get_data,
-        path: path.to_string(),
+        path: uri,
+        path_t: path.to_string(),
       };
 
       let page = match path {
@@ -120,7 +122,7 @@ impl Model {
     let cors_h = util::gen_cors_hash(util::get_timestamp(), &self.config);
 
     let js_glob = json!({
-      "path_t": self.path,
+      "path_t": self.path_t,
       "data": self.get_data,
       "root_url": self.root_url,
       "rpc": format!("{}rpc/", self.root_url),
@@ -440,7 +442,7 @@ impl Model {
     type Location = graffiti_edit_Location;
     type Author = graffiti_Author;
 
-    let ((graffiti, location), images, authors, tags) = if self.path == "/graffiti/:id/edit" {
+    let ((graffiti, location), images, authors, tags) = if self.path_t == "/graffiti/:id/edit" {
       let id: u32 = self.get_data.get("id")?.parse()?;
 
       web::block(self.db_pool.clone(), move |db| -> Result<_> {
@@ -967,7 +969,7 @@ impl Model {
   async fn m_author_edit(&self) -> Result<Markup> {
     type Author = author_edit_Author;
 
-    let (author, images) = if self.path == "/author/:id/edit" {
+    let (author, images) = if self.path_t == "/author/:id/edit" {
       let id: u32 = self.get_data.get("id")?.parse()?;
       web::block(self.db_pool.clone(), move |db| -> Result<_> {
         Ok((

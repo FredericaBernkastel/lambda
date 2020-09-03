@@ -838,6 +838,14 @@ impl View {
               a href={ (self.root_url) "views/tags" } { "Tags" }
               a href={ (self.root_url) "views/help" } { "Ayuda" }
             }
+            .languages {
+              a href={ (self.root_url) "es" (self.path) } title="Español" alt="Español" {
+                img src={ (self.root_url) "static/img/es.svg" };
+              }
+              a href={ (self.root_url) "en" (self.path) } title="English" alt="English" {
+                img src={ (self.root_url) "static/img/uk.svg" };
+              }
+            }
             .user {
               (self.svg_sprite("user", "icon-user", ""))
               span.login { (self.user.as_ref()?.login) }
