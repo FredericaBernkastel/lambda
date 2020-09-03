@@ -110,13 +110,14 @@ pub async fn init(
   let server = if config.server.bind_addr.starts_with("unix:/") {
     #[cfg(target_os = "linux")]
     {
-      server.bind_uds(config.server.bind_addr.strip_prefix("unix:")?)?
+      server.bind_uds(&config.server.bind_addr.strip_prefix("unix:")?)?
     }
     #[cfg(not(target_os = "linux"))]
     error_chain::bail!("Unix sockets are not available for this target");
   } else {
-    server.bind(config.server.bind_addr)?
+    server.bind(&config.server.bind_addr)?
   };
+  println!("Lambda v{}\nListening on {}", env!("CARGO_PKG_VERSION"), config.server.bind_addr);
   server.run().await?;
   Ok(())
 }

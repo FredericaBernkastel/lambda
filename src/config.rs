@@ -23,7 +23,6 @@ pub struct WebConfig {
   pub rows_per_page: u32,
 }
 
-pub fn load() -> Result<Config> {
-  const PATH: &str = "data/config.toml";
-  Ok(toml::from_str(&std::fs::read_to_string(PATH)?)?)
+pub fn load(path: &str) -> Result<Config> {
+  Ok(toml::from_str(&std::fs::read_to_string(path)?)?)
 }

@@ -842,10 +842,10 @@ impl View {
               a href={ (self.root_url) "views/help" } { "Help" }
             }
             .languages {
-              a href={ (self.root_url) "es" (self.path) } title="Español" alt="Español" {
+              a href={ (self.root_url) "es/views" (self.path) } title="Español" alt="Español" {
                 img src={ (self.root_url) "static/img/es.svg" };
               }
-              a href={ (self.root_url) "en" (self.path) } title="English" alt="English" {
+              a href={ (self.root_url) "en/views" (self.path) } title="English" alt="English" {
                 img src={ (self.root_url) "static/img/uk.svg" };
               }
             }
