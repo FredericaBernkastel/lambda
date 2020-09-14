@@ -3,6 +3,7 @@ use crate::{
   schema, util,
   util::json_path,
   web::{self, auth, Config, DB},
+  log_error
 };
 use actix_session::Session;
 use error_chain::bail;
@@ -543,7 +544,9 @@ impl Controller {
         for image in images {
           for p in 0..=2 {
             let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1)?, image, p);
-            std::fs::remove_file(path).ok();
+            std::fs::remove_file(&path)
+              .map_err(|e| log_error!(e, format!("graffiti_delete\nUnable to delete file: {}", path)))
+              .ok();
           }
         }
       }
@@ -751,7 +754,9 @@ impl Controller {
         for image in images {
           for p in 0..=2 {
             let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1)?, image, p);
-            std::fs::remove_file(path).ok();
+            std::fs::remove_file(&path)
+              .map_err(|e| log_error!(e, format!("author_delete\nUnable to delete file: {}", path)))
+              .ok();
           }
         }
       }
@@ -819,7 +824,10 @@ impl Controller {
           .collect(): Vec<String>;
         for image in images {
           for p in 0..=2 {
-            std::fs::remove_file(format!("data/tmp/{}_p{}.jpg", image, p)).ok();
+            let path = format!("data/tmp/{}_p{}.jpg", image, p);
+            std::fs::remove_file(&path)
+              .map_err(|e| log_error!(e, format!("store_image::gc\nUnable to delete file: {}", path)))
+              .ok();
           }
         }
         transaction.execute(

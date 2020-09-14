@@ -4,6 +4,7 @@ use crate::{
   schema, util,
   web::DB,
   web::{self, Config},
+  log_error
 };
 use error_chain::bail;
 use lazy_static::lazy_static;
@@ -686,7 +687,8 @@ impl Model {
            where id = :id",
           params![util::get_timestamp() as i64, id],
         )
-        .ok();
+          .map_err(|e| log_error!(e, "actix_rt::spawn"))
+          .ok();
       }
     });
 
@@ -1211,7 +1213,8 @@ impl Model {
            where id = :id",
           params![util::get_timestamp() as i64, id],
         )
-        .ok();
+          .map_err(|e| log_error!(e, "actix_rt::spawn"))
+          .ok();
       }
     });
 

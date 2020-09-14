@@ -18,6 +18,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
   };
 );
 
+#[macro_export] macro_rules! log_error(
+  ($err:ident) => {
+    eprintln!("Error at {}:{}\n{}", file!(), line!(), $err)
+  };
+  ($err:ident, $msg:expr) => {
+    eprintln!("Error at {}:{}; {}\n{}", file!(), line!(), $msg, $err)
+  };
+);
+
 pub fn get_timestamp() -> u64 {
   SystemTime::now()
     .duration_since(UNIX_EPOCH)
