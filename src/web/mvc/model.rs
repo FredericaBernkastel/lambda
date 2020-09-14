@@ -312,50 +312,50 @@ impl Model {
           .into_iter()
           .enumerate()
           .for_each(|(i, (tag, _))| {
-            dyn_stmt.bind(vec![(format!(":tag{}", i), Box::new(tag))]);
+            dyn_stmt.bind(format!(":tag{}", i), tag);
           });
 
         if let Some(country) = request.country {
           dyn_stmt
             .push(" and a.country = :country")
-            .bind(vec![(":country".into(), Box::new(country))]);
+            .bind(":country".to_owned(), country);
         }
         if let Some(city) = request.city {
           dyn_stmt
             .push(" and a.city = :city")
-            .bind(vec![(":city".into(), Box::new(city))]);
+            .bind(":city".to_owned(), city);
         }
         if let Some(street) = request.street {
           dyn_stmt
             .push(" and a.street = :street")
-            .bind(vec![(":street".into(), Box::new(street))]);
+            .bind(":street".to_owned(), street);
         }
         if let Some(place) = request.place {
           dyn_stmt
             .push(" and a.place = :place")
-            .bind(vec![(":place".into(), Box::new(place))]);
+            .bind(":place".to_owned(), place);
         }
         if let Some(property) = request.property {
           dyn_stmt
             .push(" and a.property = :property")
-            .bind(vec![(":property".into(), Box::new(property))]);
+            .bind(":property".to_owned(), property);
         }
         if let Some(date_before) = request.date_before {
-          dyn_stmt.push(" and e.datetime < :date_before").bind(vec![(
-            ":date_before".into(),
-            Box::new(util::datetime_variable(&date_before)?),
-          )]);
+          dyn_stmt.push(" and e.datetime < :date_before").bind(
+            ":date_before".to_owned(),
+            util::datetime_variable(&date_before)?
+          );
         }
         if let Some(date_after) = request.date_after {
-          dyn_stmt.push(" and e.datetime > :date_after").bind(vec![(
-            ":date_after".into(),
-            Box::new(util::datetime_variable(&date_after)?),
-          )]);
+          dyn_stmt.push(" and e.datetime > :date_after").bind(
+            ":date_after".to_owned(),
+            util::datetime_variable(&date_after)?,
+          );
         }
         if let Some(author_count) = request.authors_number {
           dyn_stmt
             .push(" and e.author_count = :author_count")
-            .bind(vec![(":author_count".into(), Box::new(author_count))]);
+            .bind(":author_count".to_owned(), author_count);
         }
         for (i, author) in request.authors.iter().enumerate() {
           let op = if i == 0 { "and" } else { "or" };
@@ -367,7 +367,7 @@ impl Model {
           } else {
             dyn_stmt.push(&format!(" {} c.author_id in (:author{})", op, i))
           }
-          .bind(vec![(format!(":author{}", i), Box::new(author.id))]);
+          .bind(format!(":author{}", i), author.id);
         }
         dyn_stmt
           .push(
@@ -375,10 +375,8 @@ impl Model {
             order by e.id desc
             limit :page * :limit, :limit",
           )
-          .bind(vec![
-            (":page".into(), Box::new(page - 1)),
-            (":limit".into(), Box::new(rows_per_page)),
-          ]);
+          .bind(":page".to_owned(), page - 1)
+          .bind(":limit".to_owned(), rows_per_page);
 
         let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![];
         let mut params_count: Vec<(&str, &dyn rusqlite::ToSql)> = vec![];
@@ -391,7 +389,7 @@ impl Model {
           };
         }
 
-        //graffitiis
+        //graffitis
         let graffitis = db
           .prepare(&dyn_stmt.sql)?
           .query_map_named(params.as_slice(), |row| {
@@ -786,27 +784,27 @@ impl Model {
         if let Some(age_min) = request.age_min {
           dyn_stmt
             .push(" and a.age >= :age_min")
-            .bind(vec![(":age_min".into(), Box::new(age_min))]);
+            .bind(":age_min".into(), age_min);
         }
         if let Some(age_max) = request.age_max {
           dyn_stmt
             .push(" and a.age < :age_max")
-            .bind(vec![(":age_max".into(), Box::new(age_max))]);
+            .bind(":age_max".into(), age_max);
         }
         if let Some(height_min) = request.height_min {
           dyn_stmt
             .push(" and a.height >= :height_min")
-            .bind(vec![(":height_min".into(), Box::new(height_min))]);
+            .bind(":height_min".into(), height_min);
         }
         if let Some(height_max) = request.height_max {
           dyn_stmt
             .push(" and a.height < :height_max")
-            .bind(vec![(":height_max".into(), Box::new(height_max))]);
+            .bind(":height_max".into(), height_max);
         }
         if let Some(handedness) = request.handedness {
           dyn_stmt
             .push(" and a.handedness = :handedness")
-            .bind(vec![(":handedness".into(), Box::new(handedness as u8))]);
+            .bind(":handedness".into(), handedness as u8);
         }
         if request.social_has {
           dyn_stmt.push(" and a.social_networks <> ''");
@@ -814,10 +812,7 @@ impl Model {
         if let Some(home_city) = request.home_city {
           dyn_stmt
             .push(" and a.home_city like :home_city")
-            .bind(vec![(
-              ":home_city".into(),
-              Box::new(format!("%{}%", home_city)),
-            )]);
+            .bind(":home_city".into(), format!("%{}%", home_city));
         }
 
         // companion with
@@ -836,7 +831,7 @@ impl Model {
               i
             );
             companions += &format!("(:companion{})", i);
-            dyn_stmt.bind(vec![(format!(":companion{}", i), Box::new(companion.id))]);
+            dyn_stmt.bind(format!(":companion{}", i), companion.id);
           }
 
           let companion_1_exclude = if request.companions.len() == 1 {
@@ -870,7 +865,7 @@ impl Model {
               terms += ",";
             }
             terms += &format!(":active_in{}", i);
-            dyn_stmt.bind(vec![(format!(":active_in{}", i), Box::new(term))]);
+            dyn_stmt.bind(format!(":active_in{}", i), term);
           }
           dyn_stmt.sql = format!(
             "with a as ({sub0}),
@@ -895,10 +890,9 @@ impl Model {
           )
         }
 
-        dyn_stmt.push(" limit :page * :limit, :limit").bind(vec![
-          (":page".into(), Box::new(page - 1)),
-          (":limit".into(), Box::new(rows_per_page)),
-        ]);
+        dyn_stmt.push(" limit :page * :limit, :limit")
+          .bind(":page".to_owned(), page - 1)
+          .bind(":limit".to_owned(), rows_per_page);
 
         let mut dyn_stmt_count = util::DynQuery::new();
         dyn_stmt_count.push(&format!("select count( * ) from ({})", &dyn_stmt.sql));
@@ -933,7 +927,7 @@ impl Model {
         }
 
         Ok((
-          //graffitiis
+          //graffitis
           db.prepare(&dyn_stmt.sql)?
             .query_map_named(params.as_slice(), |row| {
               Ok(Author {

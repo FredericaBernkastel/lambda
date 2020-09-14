@@ -119,10 +119,9 @@ impl DynQuery {
     self
   }
 
-  pub fn bind(&mut self, params: Vec<(String, Box<dyn rusqlite::ToSql>)>) -> &mut Self {
-    for (k, v) in params {
-      self.params.push((k, v));
-    }
+  pub fn bind(&mut self, k: String, v: impl rusqlite::ToSql + 'static) -> &mut Self
+  {
+    self.params.push((k, box v));
     self
   }
 }
