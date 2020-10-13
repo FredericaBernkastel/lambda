@@ -6,7 +6,8 @@ use sha2::{Digest, Sha256};
 use std::io::Read;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-#[macro_export] macro_rules! map(
+#[macro_export]
+macro_rules! map(
   { $($key:expr => $value:expr),+ } => {
     {
       let mut m = ::std::collections::HashMap::<String, _>::new();
@@ -18,12 +19,28 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
   };
 );
 
-#[macro_export] macro_rules! log_error(
+#[macro_export]
+macro_rules! log_error(
   ($err:ident) => {
     eprintln!("Error at {}:{}\n{}", file!(), line!(), $err)
   };
   ($err:ident, $msg:expr) => {
     eprintln!("Error at {}:{}; {}\n{}", file!(), line!(), $msg, $err)
+  };
+);
+
+#[macro_export]
+macro_rules! routes(
+  ($PTreeInner:ty; $($routes:tt => $model:ident),+ $(,)?) => {{
+    let mut path_tree = PathTree::<$PTreeInner>::new();
+    $(routes![@inner path_tree; $routes => $model];)+
+    path_tree
+  }};
+  (@inner $path_tree:ident; $route:literal => $model:ident) => {
+    $path_tree.insert($route, ($route, &$model::render));
+  };
+  (@inner $path_tree:ident; [$($route:literal),+ $(,)?] => $model:ident) => {
+    $($path_tree.insert($route, ($route, &$model::render));)+
   };
 );
 
@@ -128,8 +145,7 @@ impl DynQuery {
     self
   }
 
-  pub fn bind(&mut self, k: String, v: impl rusqlite::ToSql + 'static) -> &mut Self
-  {
+  pub fn bind(&mut self, k: String, v: impl rusqlite::ToSql + 'static) -> &mut Self {
     self.params.push((k, box v));
     self
   }

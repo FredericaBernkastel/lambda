@@ -1,18 +1,55 @@
-use super::model::{self, Model as View};
+use super::{model::Context, View};
 use crate::{
-  map,
   error::{ErrorKind, Result},
-  schema, util
+  map, schema, util,
 };
 use error_chain::bail;
 use maud::{html, Markup, PreEscaped, DOCTYPE};
-use strfmt::Format;
 use serde_json::{json, Value as JsonValue};
 use std::collections::VecDeque;
+use strfmt::Format;
 use strum::IntoEnumIterator;
 
-impl View {
-  pub fn v_root(&self, body: Markup, js_glob: JsonValue) -> Result<Markup> {
+pub struct Login;
+impl View for Login {
+  fn render(self, ctx: &Context) -> Result<Markup> {
+    Ok(html! {
+      .page-login {
+        .login {
+          p.title { "Graffiti database" }
+          .form {
+            .input-wrapper {
+              .icon { (ctx.svg_sprite("user", "", "")) }
+              input#login type="text" placeholder="username";
+            }
+            .input-wrapper {
+              .icon { (ctx.svg_sprite("key", "", "")) }
+              input#password type="password" placeholder="password";
+            }
+            p.si-error {  }
+            button#submit
+              data-html=((html! {
+                "login" span.icon { (ctx.svg_sprite("sign-in-alt", "", "")) }
+              }).into_string())
+              data-spinner=((html! {
+                (ctx.svg_sprite("spinner", "fa-spinner", ""))
+              }).into_string())
+              {
+                "login" span.icon { (ctx.svg_sprite("sign-in-alt", "", "")) }
+              }
+          }
+        }
+      }
+    })
+  }
+}
+
+pub struct Root {
+  pub body: Markup,
+  pub js_glob: serde_json::Value,
+}
+impl View for Root {
+  fn render(self, ctx: &Context) -> Result<Markup> {
     Ok(html! {
       (DOCTYPE)
       html lang="en" {
@@ -21,54 +58,114 @@ impl View {
           meta name="generator" content={ "lambda v" (env!("CARGO_PKG_VERSION"))};
           meta name="viewport" content="width=device-width";
 
-          link rel="stylesheet" href={ (self.root_url) "static/vendors.css" } type="text/css" media="screen";
-          link rel="stylesheet" href={ (self.root_url) "static/style.css" } type="text/css" media="screen";
-          script type="text/javascript" src={ (self.root_url) "static/vendors.js" } {  }
-          script type="text/javascript" src={ (self.root_url) "static/script.js" } {  }
+          link rel="stylesheet" href={ (ctx.root_url) "static/vendors.css" } type="text/css" media="screen";
+          link rel="stylesheet" href={ (ctx.root_url) "static/style.css" } type="text/css" media="screen";
+          script type="text/javascript" src={ (ctx.root_url) "static/vendors.js" } {  }
+          script type="text/javascript" src={ (ctx.root_url) "static/script.js" } {  }
 
           title { "Graffiti database" }
 
           script type="text/javascript" {
-            "var __glob = " (PreEscaped(js_glob.to_string())) ";"
+            "var __glob = " (PreEscaped(self.js_glob.to_string())) ";"
           }
         }
         body {
-          (body)
+          (self.body)
         }
       }
     })
   }
+}
 
-  pub fn v_login(&self) -> Result<Markup> {
+pub struct Home {
+  pub graffitis_recent: Vec<HomeGraffiti>,
+  pub graffitis_last_checked: Vec<HomeGraffiti>,
+  pub authors_last_checked: Vec<HomeAuthor>,
+}
+#[derive(serde::Serialize)]
+pub struct HomeGraffiti {
+  pub id: u32,
+  pub thumbnail: Option<String>,
+  pub coords: Option<[f64; 2]>,
+}
+pub struct HomeAuthor {
+  pub id: u32,
+  pub name: String,
+}
+impl View for Home {
+  fn render(self, ctx: &Context) -> Result<Markup> {
+    let map_aggregate = self
+      .graffitis_recent
+      .iter()
+      .filter_map(|x| {
+        Some(json!({
+         "id": x.id,
+         "thumbnail": x.thumbnail.clone(),
+         "coords": x.coords?
+        }))
+      })
+      .collect(): JsonValue;
+
     Ok(html! {
-      .page-login {
-        .login {
-          p.title { "Graffiti database" }
-          .form {
-            .input-wrapper {
-              .icon { (self.svg_sprite("user", "", "")) }
-              input#login type="text" placeholder="username";
-            }
-            .input-wrapper {
-              .icon { (self.svg_sprite("key", "", "")) }
-              input#password type="password" placeholder="password";
-            }
-            p.si-error {  }
-            button#submit
-              data-html=((html! {
-                "login" span.icon { (self.svg_sprite("sign-in-alt", "", "")) }
-              }).into_string())
-              data-spinner=((html! {
-                (self.svg_sprite("spinner", "fa-spinner", ""))
-              }).into_string())
-              {
-                "login" span.icon { (self.svg_sprite("sign-in-alt", "", "")) }
+      (ctx.mar_header()?)
+
+      .page-home {
+        .container {
+          .node101 {
+            .node103.boxed {
+              p.box-title { "Most recent additions" }
+              .images {
+                @for graffiti in self.graffitis_recent {
+                  a href={ (ctx.root_url) "views/graffiti/" (graffiti.id) } {
+                    .image {
+                      @if let Some(thumbnail) = graffiti.thumbnail {
+                        img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", ctx.root_url, thumbnail.get(0..=1)?, thumbnail));
+                      } @else {
+                        .no-image {  }
+                      }
+                    }
+                  }
+                }
               }
+            }
+            .node103.boxed {
+              p.box-title { "Last checked graffiti" }
+              .images {
+                @for graffiti in self.graffitis_last_checked {
+                  a href={ (ctx.root_url) "views/graffiti/" (graffiti.id) } {
+                    .image {
+                      @if let Some(thumbnail) = graffiti.thumbnail {
+                        img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", ctx.root_url, thumbnail.get(0..=1)?, thumbnail));
+                      } @else {
+                        .no-image {  }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          .node102 {
+            .node104.boxed {
+              p.box-title { "Recent activity map" }
+              .map data=(json!(map_aggregate).to_string()) {}
+            }
+            .node105.boxed {
+              p.box-title { "Last checked authors" }
+              .authors {
+                @for author in self.authors_last_checked {
+                  a href={ (ctx.root_url) "views/author/" (author.id) } { (author.name) }
+                }
+              }
+            }
           }
         }
       }
     })
   }
+}
+
+/*impl View {
 
   pub fn v_graffitis(
     &self,
@@ -221,81 +318,6 @@ impl View {
                   @for tag in tags {
                     option selected="" { (tag) }
                   }
-                }
-              }
-            }
-          }
-        }
-      }
-    })
-  }
-
-  pub fn v_home(
-    &self,
-    graffitis_recent: Vec<model::home_Graffiti>,
-    graffitis_last_checked: Vec<model::home_Graffiti>,
-    authors_last_checked: Vec<(/* id: */ u32, /* name: */ String)>,
-  ) -> Result<Markup> {
-    let map_aggregate = graffitis_recent
-      .iter()
-      .filter_map(|x| {
-        Some(json!({
-         "id": x.id,
-         "thumbnail": x.thumbnail.clone(),
-         "coords": x.coords?
-        }))
-      })
-      .collect(): JsonValue;
-
-    Ok(html! {
-      (self.mar_header()?)
-
-      .page-home {
-        .container {
-          .node101 {
-            .node103.boxed {
-              p.box-title { "Most recent additions" }
-              .images {
-                @for graffiti in graffitis_recent {
-                  a href={ (self.root_url) "views/graffiti/" (graffiti.id) } {
-                    .image {
-                      @if let Some(thumbnail) = graffiti.thumbnail {
-                        img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, thumbnail.get(0..=1)?, thumbnail));
-                      } @else {
-                        .no-image {  }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            .node103.boxed {
-              p.box-title { "Last checked graffiti" }
-              .images {
-                @for graffiti in graffitis_last_checked {
-                  a href={ (self.root_url) "views/graffiti/" (graffiti.id) } {
-                    .image {
-                      @if let Some(thumbnail) = graffiti.thumbnail {
-                        img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, thumbnail.get(0..=1)?, thumbnail));
-                      } @else {
-                        .no-image {  }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          .node102 {
-            .node104.boxed {
-              p.box-title { "Recent activity map" }
-              .map data=(json!(map_aggregate).to_string()) {}
-            }
-            .node105.boxed {
-              p.box-title { "Last checked authors" }
-              .authors {
-                @for (id, name) in authors_last_checked {
-                  a href={ (self.root_url) "views/author/" (id) } { (name) }
                 }
               }
             }
@@ -792,74 +814,6 @@ impl View {
     })
   }
 
-  fn svg_sprite(&self, id: &str, classname: &str, title: &str) -> Markup {
-    html! {
-      svg.(classname) {
-        @if !title.is_empty() {
-          title { (title) }
-        }
-        use xlink:href={ (self.root_url) "static/img/sprite.svg#" (id) }{  }
-      }
-    }
-  }
-
-  fn mar_header(&self) -> Result<Markup> {
-    Ok(html! {
-      .popup-wrapper#error {
-        .popup {
-          p.title { "Error!" }
-          .inner {
-            .message {  }
-            .actions-wrapper {
-              span.action-btn#close { "Ok" }
-            }
-          }
-        }
-      }
-
-      .popup-wrapper#warning {
-        .popup {
-          p.title { (self.svg_sprite("exclamation-triangle", "", "")) }
-          .inner {
-            .message {  }
-            .actions-wrapper {
-              span.action-btn.red#ok { "Ok" }
-              span.action-btn#cancel { "Cancel" }
-            }
-          }
-        }
-      }
-
-      .header {
-        .container {
-          .logo { "Graffiti database" }
-          .nav-menu {
-            .pages {
-              a href={ (self.root_url) "views/home" } { "Home" }
-              a href={ (self.root_url) "views/graffitis" } { "Graffiti" }
-              a href={ (self.root_url) "views/authors" } { "Authors" }
-              a href={ (self.root_url) "views/tags" } { "Tags" }
-              a href={ (self.root_url) "views/help" } { "Help" }
-            }
-            .languages {
-              a href={ (self.root_url) "es/views" (self.path) } title="Español" alt="Español" {
-                img src={ (self.root_url) "static/img/es.svg" };
-              }
-              a href={ (self.root_url) "en/views" (self.path) } title="English" alt="English" {
-                img src={ (self.root_url) "static/img/uk.svg" };
-              }
-            }
-            .user {
-              (self.svg_sprite("user", "icon-user", ""))
-              span.login { (self.user.as_ref()?.login) }
-              (self.svg_sprite("sign-out-alt", "logout", "logout"))
-            }
-          }
-        }
-      }
-    })
-  }
-
   pub fn mar_navigation(
     &self,
     link_tpl: &str,
@@ -1214,3 +1168,4 @@ impl View {
     }
   }
 }
+*/

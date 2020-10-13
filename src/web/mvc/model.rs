@@ -1,20 +1,24 @@
-#![allow(non_camel_case_types)]
+use super::{view, Model, View};
 use crate::{
   error::Result,
-  schema, util,
+  log_error, routes, schema, util,
   web::DB,
   web::{self, Config},
-  log_error
 };
+use async_trait::async_trait;
 use error_chain::bail;
+use futures::core_reexport::pin::Pin;
+use futures::Future;
 use lazy_static::lazy_static;
+use maud::html;
 use maud::Markup;
 use path_tree::PathTree;
 use rusqlite::params;
 use serde_json::json;
 use std::collections::HashMap;
+use std::rc::Rc;
 
-pub struct Model {
+pub struct Context {
   db_pool: DB,
   config: Config,
   pub root_url: String,
@@ -24,189 +28,253 @@ pub struct Model {
   pub path_t: String,
 }
 
+type PTreeInner = (
+  &'static str,
+  &'static dyn Fn(Rc<Context>) -> Pin<Box<dyn Future<Output = Result<Markup>>>>,
+);
+
+thread_local! {
+  static PATH_TREE: Rc < PathTree :: <PTreeInner>> = {
+    Rc::new(routes![PTreeInner;
+       "/login" => Login,
+       "/home" => Home,
+
+      ["/graffitis",
+       "/graffitis/page/:page"] => Graffitis,
+      ["/graffitis/search/:x-data",
+       "/graffitis/search/:x-data/page/:page"] => GraffitisSearch,
+
+      ["/graffiti/add",
+       "/graffiti/:id/edit"] => GraffitiEdit,
+       "/graffiti/:id" => Graffiti,
+
+      ["/authors",
+       "/authors/page/:page"] => Authors,
+      ["/authors/search/:x-data",
+       "/authors/search/:x-data/page/:page"] => AuthorsSearch,
+
+      ["/author/add",
+       "/author/:id/edit"] => AuthorEdit,
+       "/author/:id" => Author,
+
+       "/tags" => Tags,
+       "/help" => Help
+    ])
+  };
+}
+
 pub async fn main(
   uri: String,
   db_pool: DB,
   config: Config,
   user: Option<schema::User>,
 ) -> Result<Markup> {
-  lazy_static! {
-    static ref PATH_TREE: PathTree::<&'static str> = {
-      let mut tmp = PathTree::<&str>::new();
-      for path in vec![
-        "/login",
-        "/home",
-        "/graffitis",
-        "/graffitis/page/:page",
-        "/graffitis/search/:x-data",
-        "/graffitis/search/:x-data/page/:page",
-        "/graffiti/add",
-        "/graffiti/:id",
-        "/graffiti/:id/edit",
-        "/authors",
-        "/authors/page/:page",
-        "/authors/search/:x-data",
-        "/authors/search/:x-data/page/:page",
-        "/author/add",
-        "/author/:id",
-        "/author/:id/edit",
-        "/tags",
-        "/help",
-      ] {
-        tmp.insert(path, path);
-      }
-      tmp
-    };
-  };
+  let path_tree = PATH_TREE.with(|x| x.clone());
 
-  match PATH_TREE.find(uri.as_str()) {
-    Some((path, data)) => {
-      let path = *path;
+  match path_tree.find(uri.as_str()) {
+    Some((_route, data)) => {
+      let (path, model) = (_route.0, &*_route.1);
       let get_data: HashMap<_, _> = data
         .into_iter()
         .map(|(arg, value)| (arg.to_string(), value.to_string()))
         .collect();
 
-      let model = Model {
+      let ctx = Rc::new(Context {
         db_pool,
         root_url: config.web.root_url.clone(),
         config,
         user,
         get_data,
-        path: uri,
+        path: uri.clone(),
         path_t: path.to_string(),
+      });
+
+      let page = match (path, &ctx.user) {
+        ("/login", None) | (_, Some(_)) => model(ctx.clone()).await?,
+        (_, _) => bail!("unauthorized"),
       };
 
-      let page = match path {
-        "/login" => model.m_login().await?,
-        _ => {
-          if model.user.is_none() {
-            bail!("unauthorized");
-          }
-
-          #[rustfmt::skip] match path {
-            "/home" => model.m_home().await?,
-
-            "/graffitis" | 
-            "/graffitis/page/:page" => model.m_graffitis().await?,
-            "/graffitis/search/:x-data" | 
-            "/graffitis/search/:x-data/page/:page" => model.m_graffitis_search().await?,
-
-            "/graffiti/add" |
-            "/graffiti/:id/edit" => model.m_graffiti_edit().await?,
-            "/graffiti/:id" => model.m_graffiti().await?,
-
-            "/authors" | 
-            "/authors/page/:page" => model.m_authors().await?,
-            "/authors/search/:x-data" | 
-            "/authors/search/:x-data/page/:page" => model.m_authors_search().await?,
-
-            "/author/add" |
-            "/author/:id/edit" => model.m_author_edit().await?,
-            "/author/:id" => model.m_author().await?,
-
-            "/tags" => model.m_tags().await?,
-            "/help" => model.m_help().await?,
-            _ => unreachable!(),
-          }
-        }
-      };
-
-      Ok(model.m_root(page)?)
+      Root { body: page }.render(ctx).await
     }
     None => bail!("route not found"),
   }
 }
 
-impl Model {
-  fn m_root(&self, page: Markup) -> Result<Markup> {
-    let cors_h = util::gen_cors_hash(util::get_timestamp(), &self.config);
+struct Root {
+  body: Markup,
+}
+impl Root {
+  async fn render(self, ctx: Rc<Context>) -> Result<Markup> {
+    let cors_h = util::gen_cors_hash(util::get_timestamp(), &ctx.config);
 
     let js_glob = json!({
-      "path_t": self.path_t,
-      "data": self.get_data,
-      "root_url": self.root_url,
-      "rpc": format!("{}rpc/", self.root_url),
+      "path_t": ctx.path_t,
+      "data": ctx.get_data,
+      "root_url": ctx.root_url,
+      "rpc": format!("{}rpc/", ctx.root_url),
       "cors_h": cors_h,
-      "gmaps_api_key": self.config.web.gmaps_api_key
+      "gmaps_api_key": ctx.config.web.gmaps_api_key
     });
 
-    self.v_root(page, js_glob)
+    view::Root {
+      body: self.body,
+      js_glob,
+    }
+    .render(&ctx)
   }
+}
 
-  async fn m_login(&self) -> Result<Markup> {
-    self.v_login()
+struct Login;
+#[async_trait(?Send)]
+impl Model for Login {
+  type View = view::Login;
+  async fn render(ctx: Rc<Context>) -> Result<Markup> {
+    view::Login.render(&ctx)
   }
+}
 
-  async fn m_home(&self) -> Result<Markup> {
-    type Graffiti = home_Graffiti;
-
-    let (graffitis_recent, graffitis_last_checked, authors_last_checked) =
-      web::block(self.db_pool.clone(), move |db| -> Result<_> {
-        Ok((
-          // graffitis_recent
-          db.prepare(
+struct Home;
+#[async_trait(?Send)]
+impl Model for Home {
+  type View = view::Home;
+  async fn render(ctx: Rc<Context>) -> Result<Markup> {
+    web::block(ctx.db_pool.clone(), move |db| -> Result<_> {
+      Ok(view::Home {
+        graffitis_recent: db
+          .prepare(
             "select a.id as `0`,
-                    b.hash as `1`,
-                    c.gps_lat as `2`,
-                    c.gps_long as `3`
-               from graffiti a
-                    left join graffiti_image b on b.graffiti_id = a.id and
-                                                  b.`order` = 0
-                    left join location c on c.graffiti_id = a.id
-              order by a.id desc
-              limit 0, 8",
+                  b.hash as `1`,
+                  c.gps_lat as `2`,
+                  c.gps_long as `3`
+             from graffiti a
+                  left join graffiti_image b on b.graffiti_id = a.id and
+                                                b.`order` = 0
+                  left join location c on c.graffiti_id = a.id
+            order by a.id desc
+            limit 0, 8",
           )?
           .query_map(params![], |row| {
-            Ok(Graffiti {
+            Ok(view::HomeGraffiti {
               id: row.get(0)?,
               thumbnail: row.get(1)?,
               coords: (|| Some([row.get::<_, f64>(2).ok()?, row.get::<_, f64>(3).ok()?]))(),
             })
           })?
           .filter_map(std::result::Result::ok)
-          .collect(): Vec<Graffiti>,
-          // graffitis_last_checked
-          db.prepare(
+          .collect(): Vec<_>,
+        graffitis_last_checked: db
+          .prepare(
             "select a.id as `0`,
-                    b.hash as `1`
-               from graffiti a
-                    left join graffiti_image b on b.graffiti_id = a.id and
-                                                  b.`order` = 0
-              order by a.last_viewed desc
-              limit 0, 4",
+                  b.hash as `1`
+             from graffiti a
+                  left join graffiti_image b on b.graffiti_id = a.id and
+                                                b.`order` = 0
+            order by a.last_viewed desc
+            limit 0, 4",
           )?
           .query_map(params![], |row| {
-            Ok(Graffiti {
+            Ok(view::HomeGraffiti {
               id: row.get(0)?,
               thumbnail: row.get(1)?,
               coords: None,
             })
           })?
           .filter_map(std::result::Result::ok)
-          .collect(): Vec<Graffiti>,
-          // authors_last_checked
-          db.prepare(
+          .collect(): Vec<_>,
+        authors_last_checked: db
+          .prepare(
             "select id as `0`,
-                    name as `1`
-               from author
-              order by last_viewed desc
-              limit 0, 6",
+                  name as `1`
+             from author
+            order by last_viewed desc
+            limit 0, 6",
           )?
-          .query_map(params![], |row| Ok((row.get(0)?, row.get(1)?)))?
+          .query_map(params![], |row| {
+            Ok(view::HomeAuthor {
+              id: row.get(0)?,
+              name: row.get(1)?,
+            })
+          })?
           .filter_map(std::result::Result::ok)
-          .collect(): Vec<(u32, String)>,
-        ))
+          .collect(): Vec<_>,
       })
-      .await?;
+    })
+    .await?
+    .render(&ctx)
+  }
+}
 
-    self.v_home(
-      graffitis_recent,
-      graffitis_last_checked,
-      authors_last_checked,
-    )
+impl Context {
+  pub fn svg_sprite(&self, id: &str, classname: &str, title: &str) -> Markup {
+    html! {
+      svg.(classname) {
+        @if !title.is_empty() {
+          title { (title) }
+        }
+        use xlink:href={ (self.root_url) "static/img/sprite.svg#" (id) }{  }
+      }
+    }
   }
 
+  pub fn mar_header(&self) -> Result<Markup> {
+    Ok(html! {
+      .popup-wrapper#error {
+        .popup {
+          p.title { "Error!" }
+          .inner {
+            .message {  }
+            .actions-wrapper {
+              span.action-btn#close { "Ok" }
+            }
+          }
+        }
+      }
+
+      .popup-wrapper#warning {
+        .popup {
+          p.title { (self.svg_sprite("exclamation-triangle", "", "")) }
+          .inner {
+            .message {  }
+            .actions-wrapper {
+              span.action-btn.red#ok { "Ok" }
+              span.action-btn#cancel { "Cancel" }
+            }
+          }
+        }
+      }
+
+      .header {
+        .container {
+          .logo { "Graffiti database" }
+          .nav-menu {
+            .pages {
+              a href={ (self.root_url) "views/home" } { "Home" }
+              a href={ (self.root_url) "views/graffitis" } { "Graffiti" }
+              a href={ (self.root_url) "views/authors" } { "Authors" }
+              a href={ (self.root_url) "views/tags" } { "Tags" }
+              a href={ (self.root_url) "views/help" } { "Help" }
+            }
+            .languages {
+              a href={ (self.root_url) "es/views" (self.path) } title="Español" alt="Español" {
+                img src={ (self.root_url) "static/img/es.svg" };
+              }
+              a href={ (self.root_url) "en/views" (self.path) } title="English" alt="English" {
+                img src={ (self.root_url) "static/img/uk.svg" };
+              }
+            }
+            .user {
+              (self.svg_sprite("user", "icon-user", ""))
+              span.login { (self.user.as_ref()?.login) }
+              (self.svg_sprite("sign-out-alt", "logout", "logout"))
+            }
+          }
+        }
+      }
+    })
+  }
+}
+
+/*
   async fn m_graffitis(&self) -> Result<Markup> {
     type Graffiti = graffitis_Graffiti;
 
@@ -289,7 +357,7 @@ impl Model {
                    a.gps_long as `6`
               from graffiti e
                    left join location a on a.graffiti_id = e.id
-                   left join graffiti_image b on b.graffiti_id = e.id and 
+                   left join graffiti_image b on b.graffiti_id = e.id and
                                                  b.`order` = 0
                    left join graffiti_author c on c.graffiti_id = e.id
                    {tags}
@@ -875,9 +943,9 @@ impl Model {
               with sub2_sub1 as (
                 select graffiti_id
                   from location
-                 where country in ({terms}) or 
-                       city in ({terms}) or 
-                       street in ({terms}) 
+                 where country in ({terms}) or
+                       city in ({terms}) or
+                       street in ({terms})
                 )
                 select distinct graffiti_author.author_id
                   from sub2_sub1
@@ -1091,7 +1159,7 @@ impl Model {
         .collect(): Vec<String>,
         // graffiti_count
         db.query_row(
-          "select count( * ) 
+          "select count( * )
             from graffiti_author
            where author_id = :id",
           params![id],
@@ -1103,7 +1171,7 @@ impl Model {
                  c.hash
             from graffiti_author a
                  inner join graffiti b on b.id = a.graffiti_id
-                 left join graffiti_image c on c.graffiti_id = b.id and 
+                 left join graffiti_image c on c.graffiti_id = b.id and
                                                c.`order` = 0
            where a.author_id = :id
            order by a.graffiti_id desc
@@ -1118,7 +1186,7 @@ impl Model {
                  c.hash
             from graffiti_author a
                  inner join graffiti b on b.id = a.graffiti_id
-                 left join graffiti_image c on c.graffiti_id = b.id and 
+                 left join graffiti_image c on c.graffiti_id = b.id and
                                                c.`order` = 0
            where a.author_id = :id
            order by b.views desc
@@ -1130,7 +1198,7 @@ impl Model {
         // aggregate_counties
         db.prepare(
           "select b.country,
-                 count(b.country) as count 
+                 count(b.country) as count
             from graffiti_author a
                  inner join location b on b.graffiti_id = a.graffiti_id
            where author_id = :id
@@ -1161,7 +1229,7 @@ impl Model {
                  c.hash
             from graffiti_author a
                  inner join location b on b.graffiti_id = a.graffiti_id
-                 left join graffiti_image c on c.graffiti_id = a.graffiti_id and 
+                 left join graffiti_image c on c.graffiti_id = a.graffiti_id and
                                                c.`order` = 0
            where author_id = :id",
         )?
@@ -1184,7 +1252,7 @@ impl Model {
           sub2 as (
             select author_id
               from graffiti_author
-             where graffiti_id in sub1 and 
+             where graffiti_id in sub1 and
                    author_id <> :author_id
              group by author_id
           )
@@ -1308,13 +1376,6 @@ pub struct author_edit_Author {
   pub notes: String,
 }
 
-#[derive(serde::Serialize)]
-pub struct home_Graffiti {
-  pub id: u32,
-  pub thumbnail: Option<String>,
-  pub coords: Option<[f64; 2]>,
-}
-
 #[derive(Default, Clone, serde::Deserialize)]
 pub struct graffitis_SearchOpts {
   pub country: Option<String>,
@@ -1341,3 +1402,4 @@ pub struct authors_SearchOpts {
   pub home_city: Option<String>,
   pub active_in: Vec<String>,
 }
+*/

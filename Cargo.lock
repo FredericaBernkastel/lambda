@@ -1006,6 +1006,7 @@ dependencies = [
  "actix-rt",
  "actix-session",
  "actix-web",
+ "async-trait",
  "base64 0.12.0",
  "bytes",
  "chrono",

@@ -38,6 +38,7 @@ regex = "*"
 strfmt = "0.1.6"
 error-chain = "0.12.2"
 flate2 = "1"
+async-trait = "0.1"
 
 [profile.release]
 lto = true
