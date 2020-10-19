@@ -44,11 +44,11 @@ impl View for Login {
   }
 }
 
-pub struct Root {
-  pub body: Markup,
+pub struct Root<'a> {
+  pub body: &'a Markup,
   pub js_glob: serde_json::Value,
 }
-impl View for Root {
+impl<'a> View for Root<'_> {
   fn render(self, ctx: &Context) -> Result<Markup> {
     Ok(html! {
       (DOCTYPE)

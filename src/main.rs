@@ -2,6 +2,7 @@
 #![feature(type_ascription)]
 #![feature(stmt_expr_attributes)]
 #![feature(box_syntax)]
+#![feature(associated_type_defaults)]
 
 mod cli;
 mod config;

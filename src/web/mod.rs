@@ -1,4 +1,8 @@
-use crate::{config, error, util};
+use crate::{
+  config,
+  error::{self, ErrorKind},
+  util,
+};
 use actix_session::{CookieSession, Session};
 use actix_web::{
   error::BlockingError, get, guard, middleware, post, web, App, HttpResponse, HttpServer, Result,
@@ -117,7 +121,11 @@ pub async fn init(
   } else {
     server.bind(&config.server.bind_addr)?
   };
-  println!("Lambda v{}\nListening on {}", env!("CARGO_PKG_VERSION"), config.server.bind_addr);
+  println!(
+    "Lambda v{}\nListening on {}",
+    env!("CARGO_PKG_VERSION"),
+    config.server.bind_addr
+  );
   server.run().await?;
   Ok(())
 }

@@ -1,6 +1,6 @@
 use super::{view, Model, View};
 use crate::{
-  error::Result,
+  error::{ErrorKind, Result},
   log_error, routes, schema, util,
   web::DB,
   web::{self, Config},
@@ -28,10 +28,7 @@ pub struct Context {
   pub path_t: String,
 }
 
-type PTreeInner = (
-  &'static str,
-  &'static dyn Fn(Rc<Context>) -> Pin<Box<dyn Future<Output = Result<Markup>>>>,
-);
+type PTreeInner = (&'static str, &'static dyn Model<View = ()>);
 
 thread_local! {
   static PATH_TREE: Rc < PathTree :: <PTreeInner>> = {
@@ -39,7 +36,7 @@ thread_local! {
        "/login" => Login,
        "/home" => Home,
 
-      ["/graffitis",
+      /*["/graffitis",
        "/graffitis/page/:page"] => Graffitis,
       ["/graffitis/search/:x-data",
        "/graffitis/search/:x-data/page/:page"] => GraffitisSearch,
@@ -58,7 +55,7 @@ thread_local! {
        "/author/:id" => Author,
 
        "/tags" => Tags,
-       "/help" => Help
+       "/help" => Help*/
     ])
   };
 }
@@ -73,7 +70,7 @@ pub async fn main(
 
   match path_tree.find(uri.as_str()) {
     Some((_route, data)) => {
-      let (path, model) = (_route.0, &*_route.1);
+      let (path, model) = (_route.0, _route.1);
       let get_data: HashMap<_, _> = data
         .into_iter()
         .map(|(arg, value)| (arg.to_string(), value.to_string()))
@@ -90,21 +87,23 @@ pub async fn main(
       });
 
       let page = match (path, &ctx.user) {
-        ("/login", None) | (_, Some(_)) => model(ctx.clone()).await?,
+        ("/login", None) | (_, Some(_)) => model.exec(ctx.clone()).await?,
         (_, _) => bail!("unauthorized"),
       };
 
-      Root { body: page }.render(ctx).await
+      Root { body: page }.exec_sync(ctx)
     }
-    None => bail!("route not found"),
+    None => bail!(ErrorKind::RouteNotFound),
   }
 }
 
 struct Root {
   body: Markup,
 }
-impl Root {
-  async fn render(self, ctx: Rc<Context>) -> Result<Markup> {
+#[async_trait(?Send)]
+impl Model for Root {
+  type View = view::Root<'static>;
+  fn exec_sync(&self, ctx: Rc<Context>) -> Result<Markup> {
     let cors_h = util::gen_cors_hash(util::get_timestamp(), &ctx.config);
 
     let js_glob = json!({
@@ -117,7 +116,7 @@ impl Root {
     });
 
     view::Root {
-      body: self.body,
+      body: &self.body,
       js_glob,
     }
     .render(&ctx)
@@ -127,8 +126,7 @@ impl Root {
 struct Login;
 #[async_trait(?Send)]
 impl Model for Login {
-  type View = view::Login;
-  async fn render(ctx: Rc<Context>) -> Result<Markup> {
+  async fn exec(&self, ctx: Rc<Context>) -> Result<Markup> {
     view::Login.render(&ctx)
   }
 }
@@ -136,8 +134,7 @@ impl Model for Login {
 struct Home;
 #[async_trait(?Send)]
 impl Model for Home {
-  type View = view::Home;
-  async fn render(ctx: Rc<Context>) -> Result<Markup> {
+  async fn exec(&self, ctx: Rc<Context>) -> Result<Markup> {
     web::block(ctx.db_pool.clone(), move |db| -> Result<_> {
       Ok(view::Home {
         graffitis_recent: db

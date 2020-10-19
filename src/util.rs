@@ -37,10 +37,10 @@ macro_rules! routes(
     path_tree
   }};
   (@inner $path_tree:ident; $route:literal => $model:ident) => {
-    $path_tree.insert($route, ($route, &$model::render));
+    $path_tree.insert($route, ($route, &$model));
   };
   (@inner $path_tree:ident; [$($route:literal),+ $(,)?] => $model:ident) => {
-    $($path_tree.insert($route, ($route, &$model::render));)+
+    $($path_tree.insert($route, ($route, &$model));)+
   };
 );
 

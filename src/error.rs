@@ -20,6 +20,7 @@ error_chain! {
 
     InvalidLogin
     InvalidRequest
+    RouteNotFound
   }
 }
 
@@ -48,24 +49,45 @@ impl From<actix_http::error::PayloadError> for Error {
 }
 
 pub fn display(error: &Error) -> String {
-  let mut msg = "Error:\n".to_string();
-  error
-    .iter()
-    .enumerate()
-    .for_each(|(index, error)| msg.push_str(&format!("└> {} - {}", index, error)));
+  match error.kind() {
+    ErrorKind::RouteNotFound => "".to_string(),
+    _ => {
+      let mut msg = "Error:\n".to_string();
+      error
+        .iter()
+        .enumerate()
+        .for_each(|(index, error)| msg.push_str(&format!("└> {} - {}", index, error)));
 
-  if let Some(backtrace) = error.backtrace() {
-    msg.push_str(&format!("\n\n{:?}", backtrace));
+      if let Some(backtrace) = error.backtrace() {
+        msg.push_str(&format!("\n\n{:?}", backtrace));
+      }
+      eprintln!("{}", msg);
+      msg
+    }
   }
-  eprintln!("{}", msg);
-  msg
 }
 
 impl actix_http::error::ResponseError for Error {
   fn status_code(&self) -> actix_http::http::StatusCode {
-    actix_http::http::StatusCode::INTERNAL_SERVER_ERROR
+    match self.kind() {
+      ErrorKind::RouteNotFound => actix_http::http::StatusCode::NOT_FOUND,
+      _ => actix_http::http::StatusCode::INTERNAL_SERVER_ERROR,
+    }
   }
   fn error_response(&self) -> actix_http::Response {
-    actix_web::HttpResponse::InternalServerError().body(display(self))
+    match self.kind() {
+      ErrorKind::RouteNotFound => actix_web::HttpResponse::NotFound().body(display(self)),
+      ErrorKind::InvalidRequest => actix_web::HttpResponse::BadRequest().body({
+        #[cfg(debug_assertions)]
+        {
+          display(self)
+        }
+        #[cfg(not(debug_assertions))]
+        {
+          "".to_string()
+        }
+      }),
+      _ => actix_web::HttpResponse::InternalServerError().body(display(self)),
+    }
   }
 }
