@@ -1,7 +1,7 @@
 use super::model::{self, Model as View};
 use crate::{
   map,
-  error::{ErrorKind, Result},
+  error::{ErrorKind::{self, NoneError}, Result},
   schema, util
 };
 use error_chain::bail;
@@ -106,7 +106,7 @@ impl View {
                 .col2 {
                   a.graffiti-img href={ (self.root_url) "views/graffiti/" (graffiti.id) } {
                     @if let Some(thumbnail) = graffiti.thumbnail {
-                      img src=(format!("{}static/img/graffiti/{}/{}_p2.jpg", self.root_url, thumbnail.get(0..=1)?, thumbnail));
+                      img src=(format!("{}static/img/graffiti/{}/{}_p2.jpg", self.root_url, thumbnail.get(0..=1).ok_or(NoneError)?, thumbnail));
                     } @else {
                       .no-image {  }
                     }
@@ -260,7 +260,7 @@ impl View {
                   a href={ (self.root_url) "views/graffiti/" (graffiti.id) } {
                     .image {
                       @if let Some(thumbnail) = graffiti.thumbnail {
-                        img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, thumbnail.get(0..=1)?, thumbnail));
+                        img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, thumbnail.get(0..=1).ok_or(NoneError)?, thumbnail));
                       } @else {
                         .no-image {  }
                       }
@@ -276,7 +276,7 @@ impl View {
                   a href={ (self.root_url) "views/graffiti/" (graffiti.id) } {
                     .image {
                       @if let Some(thumbnail) = graffiti.thumbnail {
-                        img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, thumbnail.get(0..=1)?, thumbnail));
+                        img src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, thumbnail.get(0..=1).ok_or(NoneError)?, thumbnail));
                       } @else {
                         .no-image {  }
                       }
@@ -361,7 +361,7 @@ impl View {
             .node102 {
               .graffiti-image {
                 @if let Some(image) = images.get(0) {
-                  img data-id="0" src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, image.get(0..=1)?, image));
+                  img data-id="0" src=(format!("{}static/img/graffiti/{}/{}_p1.jpg", self.root_url, image.get(0..=1).ok_or(NoneError)?, image));
                   .images data-type="x-template" {
                     (json!(images))
                   }
@@ -458,7 +458,7 @@ impl View {
                 .col2 {
                   a.graffiti-img href={ (self.root_url) "views/author/" (author.id) } {
                     @if let Some(thumbnail) = author.thumbnail {
-                      img src=(format!("{}static/img/author/{}/{}_p2.jpg", self.root_url, thumbnail.get(0..=1)?, thumbnail));
+                      img src=(format!("{}static/img/author/{}/{}_p2.jpg", self.root_url, thumbnail.get(0..=1).ok_or(NoneError)?, thumbnail));
                     } @else {
                       .no-image {  }
                     }
@@ -583,7 +583,7 @@ impl View {
                 }
                 .author-image {
                   @if let Some(image) = images.get(0) {
-                    img data-id="0" src=(format!("{}static/img/author/{}/{}_p1.jpg", self.root_url, image.get(0..=1)?, image));
+                    img data-id="0" src=(format!("{}static/img/author/{}/{}_p1.jpg", self.root_url, image.get(0..=1).ok_or(NoneError)?, image));
                     .images data-type="x-template" {
                       (json!(images))
                     }
@@ -657,7 +657,7 @@ impl View {
                     @if let Some((id, thumbnail)) = graffiti_recent {
                       a.img href={ (self.root_url) "views/graffiti/" (id) } {
                         @if let Some(image) = thumbnail {
-                          img src=(format!("{}static/img/graffiti/{}/{}_p2.jpg", self.root_url, image.get(0..=1)?, image));
+                          img src=(format!("{}static/img/graffiti/{}/{}_p2.jpg", self.root_url, image.get(0..=1).ok_or(NoneError)?, image));
                         } @else {
                           .no-image {  }
                         }
@@ -671,7 +671,7 @@ impl View {
                     @if let Some((id, thumbnail)) = graffiti_most_viewed {
                       a.img href={ (self.root_url) "views/graffiti/" (id) } {
                         @if let Some(image) = thumbnail {
-                          img src=(format!("{}static/img/graffiti/{}/{}_p2.jpg", self.root_url, image.get(0..=1)?, image));
+                          img src=(format!("{}static/img/graffiti/{}/{}_p2.jpg", self.root_url, image.get(0..=1).ok_or(NoneError)?, image));
                         } @else {
                           .no-image {  }
                         }
@@ -851,7 +851,7 @@ impl View {
             }
             .user {
               (self.svg_sprite("user", "icon-user", ""))
-              span.login { (self.user.as_ref()?.login) }
+              span.login { (self.user.as_ref().ok_or(NoneError)?.login) }
               (self.svg_sprite("sign-out-alt", "logout", "logout"))
             }
           }
@@ -949,7 +949,7 @@ impl View {
     let src = match hash {
       Some(hash) => path_template.format(&map!{
         "root_url" => self.root_url.clone(),
-        "h0" => hash.get(0..=1)?.into(),
+        "h0" => hash.get(0..=1).ok_or(NoneError)?.into(),
         "hash" => hash.into()
       }).map_err(|_| "invalid format template")?,
       None => "{src}".into(),

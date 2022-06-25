@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 use crate::{
-  error::Result,
+  error::{Result, ErrorKind::NoneError},
   schema, util,
   web::DB,
   web::{self, Config},
@@ -270,7 +270,7 @@ impl Model {
     type Graffiti = graffitis_Graffiti;
 
     let page: i64 = self.get_data.get("page").unwrap_or(&"1".into()).parse()?;
-    let data = self.get_data.get("x-data")?;
+    let data = self.get_data.get("x-data").ok_or(NoneError)?;
 
     let request = util::b64_gunzip_deserialize_t::<graffitis_SearchOpts>(data)?;
 
@@ -344,13 +344,13 @@ impl Model {
         if let Some(date_before) = request.date_before {
           dyn_stmt.push(" and e.datetime < :date_before").bind(
             ":date_before".to_owned(),
-            util::datetime_variable(&date_before)?
+            util::datetime_variable(&date_before).ok_or(NoneError)?
           );
         }
         if let Some(date_after) = request.date_after {
           dyn_stmt.push(" and e.datetime > :date_after").bind(
             ":date_after".to_owned(),
-            util::datetime_variable(&date_after)?,
+            util::datetime_variable(&date_after).ok_or(NoneError)?,
           );
         }
         if let Some(author_count) = request.authors_number {
@@ -442,7 +442,7 @@ impl Model {
     type Author = graffiti_Author;
 
     let ((graffiti, location), images, authors, tags) = if self.path_t == "/graffiti/:id/edit" {
-      let id: u32 = self.get_data.get("id")?.parse()?;
+      let id: u32 = self.get_data.get("id").ok_or(NoneError)?.parse()?;
 
       web::block(self.db_pool.clone(), move |db| -> Result<_> {
         Ok((
@@ -578,7 +578,7 @@ impl Model {
   async fn m_graffiti(&self) -> Result<Markup> {
     type Author = graffiti_Author;
 
-    let id: u32 = self.get_data.get("id")?.parse()?;
+    let id: u32 = self.get_data.get("id").ok_or(NoneError)?.parse()?;
 
     let ((graffiti, location), images, authors, tags) =
       web::block(self.db_pool.clone(), move |db| -> Result<_> {
@@ -765,7 +765,7 @@ impl Model {
     type Author = authors_Author;
 
     let page: i64 = self.get_data.get("page").unwrap_or(&"1".into()).parse()?;
-    let data = self.get_data.get("x-data")?;
+    let data = self.get_data.get("x-data").ok_or(NoneError)?;
 
     let request = util::b64_gunzip_deserialize_t::<authors_SearchOpts>(data)?;
 
@@ -966,7 +966,7 @@ impl Model {
     type Author = author_edit_Author;
 
     let (author, images) = if self.path_t == "/author/:id/edit" {
-      let id: u32 = self.get_data.get("id")?.parse()?;
+      let id: u32 = self.get_data.get("id").ok_or(NoneError)?.parse()?;
       web::block(self.db_pool.clone(), move |db| -> Result<_> {
         Ok((
           // author
@@ -1038,7 +1038,7 @@ impl Model {
 
     type GraffitiImg = (/* id:  */ u32, /* thumbnail: */ Option<String>);
 
-    let id: u32 = self.get_data.get("id")?.parse()?;
+    let id: u32 = self.get_data.get("id").ok_or(NoneError)?.parse()?;
 
     let (
       author,

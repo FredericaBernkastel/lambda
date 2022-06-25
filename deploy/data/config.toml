@@ -9,6 +9,6 @@ env_vars = [
 [web]
 root_url = "/"
 secret_key = "CuC-#RHa('(wzD5'`~N_Q}`d8_~{7QV]"
-gmaps_api_key = "AIzaSyCXbxqKY9UM5w9AsL5P2GXKO3Dfvk2Tv-4"
+gmaps_api_key = "AIzaSyChSC2Tqz1rgliIYUFZeVwyiw0GOBP7m4Y"
 max_request_size = 13108224 # 10MB + 25% json overhead
 rows_per_page = 20

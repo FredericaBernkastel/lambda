@@ -1,5 +1,5 @@
 use crate::{
-  error::{Error, ErrorKind, Result},
+  error::{Error, ErrorKind::{self, NoneError}, Result},
   schema, util,
   util::json_path,
   web::{self, auth, Config, DB},
@@ -123,7 +123,7 @@ impl Controller {
     struct Request {
       login: String,
       password: String,
-    };
+    }
     let request: Request = from_json(self.post_data.take())?;
     let result = match auth::login(
       &request.login,
@@ -162,7 +162,7 @@ impl Controller {
       intervening: String,
       companions: u32,
       notes: String,
-    };
+    }
     #[derive(Deserialize)]
     struct Location {
       country: String,
@@ -172,7 +172,7 @@ impl Controller {
       property: String,
       gps_long: Option<f64>,
       gps_lat: Option<f64>,
-    };
+    }
     #[derive(Deserialize)]
     struct Author {
       id: u32,
@@ -185,7 +185,7 @@ impl Controller {
       authors: Vec<Author>,
       images: Vec<String>,
       tags: Vec<String>,
-    };
+    }
     let mut request: Request = from_json(self.post_data.take())?;
     request.authors.sort_unstable_by(|a, b| a.id.cmp(&b.id));
     request.authors.dedup_by(|a, b| a.id == b.id);
@@ -344,7 +344,7 @@ impl Controller {
       intervening: String,
       companions: u32,
       notes: String,
-    };
+    }
     #[derive(Deserialize)]
     struct Location {
       country: String,
@@ -354,7 +354,7 @@ impl Controller {
       property: String,
       gps_long: Option<f64>,
       gps_lat: Option<f64>,
-    };
+    }
     #[derive(Deserialize)]
     struct Author {
       id: u32,
@@ -367,7 +367,7 @@ impl Controller {
       authors: Vec<Author>,
       images: Vec<String>,
       tags: Vec<String>,
-    };
+    }
     let mut request: Request = from_json(self.post_data.take())?;
     request.authors.sort_unstable_by(|a, b| a.id.cmp(&b.id));
     request.authors.dedup_by(|a, b| a.id == b.id);
@@ -525,7 +525,7 @@ impl Controller {
     #[derive(Deserialize)]
     struct Request {
       id: u32,
-    };
+    }
     let request: Request = from_json(self.post_data.take())?;
 
     web::block(self.db_pool, move |mut _db| -> Result<_> {
@@ -543,7 +543,7 @@ impl Controller {
           .filter_map(std::result::Result::ok);
         for image in images {
           for p in 0..=2 {
-            let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1)?, image, p);
+            let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or(NoneError)?, image, p);
             std::fs::remove_file(&path)
               .map_err(|e| log_error!(e, format!("graffiti_delete\nUnable to delete file: {}", path)))
               .ok();
@@ -580,7 +580,7 @@ impl Controller {
       social_networks: String,
       notes: String,
       images: Vec<String>,
-    };
+    }
     let request: Request = from_json(self.post_data.take())?;
 
     if request.name.is_empty() {
@@ -664,7 +664,7 @@ impl Controller {
       social_networks: String,
       notes: String,
       images: Vec<String>,
-    };
+    }
     let request: Request = from_json(self.post_data.take())?;
 
     if request.name.is_empty() {
@@ -739,7 +739,7 @@ impl Controller {
     #[derive(Deserialize)]
     struct Request {
       id: u32,
-    };
+    }
     let request: Request = from_json(self.post_data.take())?;
 
     web::block(self.db_pool, move |mut _db| -> Result<_> {
@@ -753,7 +753,7 @@ impl Controller {
           .filter_map(std::result::Result::ok);
         for image in images {
           for p in 0..=2 {
-            let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1)?, image, p);
+            let path = format!("{}/{}/{}_p{}.jpg", images_folder, image.get(0..=1).ok_or(NoneError)?, image, p);
             std::fs::remove_file(&path)
               .map_err(|e| log_error!(e, format!("author_delete\nUnable to delete file: {}", path)))
               .ok();
@@ -852,12 +852,12 @@ impl Controller {
     #[derive(Deserialize)]
     struct Request {
       term: String,
-    };
+    }
     let request: Request = from_json(self.post_data.take())?;
     struct Row {
       id: u32,
       name: String,
-    };
+    }
     let names = web::block(self.db_pool, move |db| -> Result<_> {
       let mut stmt = db.prepare(
         "select id,
@@ -898,12 +898,12 @@ impl Controller {
     #[derive(Deserialize)]
     struct Request {
       term: String,
-    };
+    }
     let request: Request = from_json(self.post_data.take())?;
     struct Row {
       id: u32,
       name: String,
-    };
+    }
     let tags = web::block(self.db_pool, move |db| -> Result<_> {
       let mut stmt = db.prepare(
         "select id, name
@@ -943,7 +943,7 @@ impl Controller {
     #[derive(Deserialize)]
     struct Request {
       term: String,
-    };
+    }
     let request: Request = from_json(self.post_data.take())?;
     let names = web::block(self.db_pool, move |db| -> Result<_> {
       let mut stmt = db.prepare(
@@ -984,13 +984,13 @@ impl Controller {
       Delete = 1,
       Rename = 2,
       Merge = 3,
-    };
+    }
     #[derive(Deserialize)]
     struct Request {
       opcode: TagOpcode,
       lhside: String,
       rhside: String,
-    };
+    }
     let request: Request = from_json(self.post_data.take())?;
     web::block(self.db_pool, move |mut _db| -> Result<_> {
       let transaction = _db.transaction()?;
@@ -1103,7 +1103,7 @@ impl Controller {
           let path = format!(
             "{}/{}/{}_p{}.jpg",
             images_folder,
-            image.get(0..=1)?,
+            image.get(0..=1).ok_or(NoneError)?,
             image,
             p
           );
@@ -1119,7 +1119,7 @@ impl Controller {
 
       for (id, image) in new_images.iter().enumerate() {
         if !old_images.contains(image) {
-          let prefix = image.get(0..=1)?;
+          let prefix = image.get(0..=1).ok_or(NoneError)?;
           std::fs::create_dir_all(format!("{}/{}", images_folder, prefix))?;
           for p in 0..=2 {
             let path = format!("{}/{}/{}_p{}.jpg", images_folder, prefix, image, p);

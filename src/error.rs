@@ -16,7 +16,7 @@ error_chain! {
   }
 
   errors {
-    NoneError(e: std::option::NoneError)
+    NoneError
 
     InvalidLogin
     InvalidRequest
@@ -32,12 +32,6 @@ where
       actix_web::error::BlockingError::Error(e) => Error::with_chain(e, ""),
       actix_web::error::BlockingError::Canceled => "request cancelled".into(),
     }
-  }
-}
-
-impl From<std::option::NoneError> for Error {
-  fn from(e: std::option::NoneError) -> Self {
-    Error::from_kind(ErrorKind::NoneError(e))
   }
 }
 
