@@ -110,7 +110,7 @@ pub async fn init(
   let server = if config.server.bind_addr.starts_with("unix:/") {
     #[cfg(target_os = "linux")]
     {
-      server.bind_uds(&config.server.bind_addr.strip_prefix("unix:")?)?
+      server.bind_uds(&config.server.bind_addr.strip_prefix("unix:").unwrap())?
     }
     #[cfg(not(target_os = "linux"))]
     error_chain::bail!("Unix sockets are not available for this target");
