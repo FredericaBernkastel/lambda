@@ -5,7 +5,7 @@
 docker compose up --build
 
 # open the running container console, and register new admin user
-cd app && ./lambda register -u "user" -p "password"
+cd /app && ./server register -u "user" -p "password"
 ```
 Your application will be available at http://localhost:8080/views/home.
 

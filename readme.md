@@ -15,14 +15,16 @@ cd deploy && ./lambda register -u "user" -p "password"
 ```
 ### Run with docker
 ```bash
-# build and run the container
-docker compose up --build
+# download and run the container
+# create "data" volume for the persistency 
+docker run --name lambda -p 8080:8080 -v data:/app/data ghcr.io/fredericabernkastel/lambda:latest
 
 # open the running container console, and register new admin user
-cd app && ./lambda register -u "user" -p "password"
+cd /app && ./server register -u "user" -p "password"
 ```
 Your application will be available at http://localhost:8080/views/home.  
-For more docker options, see [`readme.Docker.md`](README.Docker.md).
+
+For building docker image, see [`readme.Docker.md`](README.Docker.md).
 
 ### Database ERD
 ![](doc/database_erd.png)
