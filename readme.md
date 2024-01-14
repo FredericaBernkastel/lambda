@@ -1,3 +1,4 @@
+![Docker Image CI](https://github.com/FredericaBernkastel/lambda/actions/workflows/docker-image.yml/badge.svg)  
 An experiment of building a web backend with Rust and Docker.
 
 ### Run yourself
