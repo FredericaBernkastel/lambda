@@ -1,11 +1,15 @@
 ### Building and running your application
 
-When you're ready, start your application by running:
-`docker compose up --build`.
+```bash
+# build and run the container
+docker compose up --build
 
+# open the running container console, and register new admin user
+cd app && ./lambda register -u "user" -p "password"
+```
 Your application will be available at http://localhost:8080/views/home.
 
-For live reloading, use `docker compose watch`.
+For live reloading, try `docker compose watch`.
 
 ### Deploying your application to the cloud
 

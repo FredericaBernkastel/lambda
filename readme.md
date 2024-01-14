@@ -11,9 +11,17 @@ cd deploy && ./lambda register -u "user" -p "password"
 
 # run server
 ./lambda
-# login at http://127.0.0.1:8080/views/login
 ```
-For running with docker, see [`readme.Docker.md`](readme.Docker.md).
+### Run with docker
+```bash
+# build and run the container
+docker compose up --build
+
+# open the running container console, and register new admin user
+cd app && ./lambda register -u "user" -p "password"
+```
+Your application will be available at http://localhost:8080/views/home.  
+For more docker options, see [`readme.Docker.md`](README.Docker.md).
 
 ### Database ERD
 ![](doc/database_erd.png)
