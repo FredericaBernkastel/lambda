@@ -1,4 +1,4 @@
-An experiment of building a web backend with Rust.
+An experiment of building a web backend with Rust and Docker.
 
 ### Run yourself
 ```bash
@@ -13,6 +13,7 @@ cd deploy && ./lambda register -u "user" -p "password"
 ./lambda
 # login at http://127.0.0.1:8080/views/login
 ```
+For running with docker, see [`readme.Docker.md`](readme.Docker.md).
 
 ### Database ERD
 ![](doc/database_erd.png)
